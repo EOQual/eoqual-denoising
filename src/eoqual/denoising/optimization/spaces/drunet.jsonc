@@ -1,0 +1,11 @@
+{
+  // Espace de recherche de « drunet » — chargé par optimization/search_spaces.py.
+  // Réseau conditionné par σ : seul réglage, sigma_scale (déjà ≈ 1 à σ connu). Utile si σ est estimé ou le bruit non conforme.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Multiplie le σ donné au réseau.
+    {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.0},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"sigma_scale": 1.0},
+}

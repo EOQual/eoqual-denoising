@@ -1,0 +1,13 @@
+{
+  // Espace de recherche de « bilateral » — chargé par optimization/search_spaces.py.
+  // Filtre bilatéral (OpenCV). 2 dimensions : budget 15-25.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Noyau radiométrique, × σ. Petit : lisse peu ; grand : lisse à travers les contours. Défaut calibré 2,5.
+    {"name": "sigma_color", "type": "float", "low": 0.5, "high": 6.0, "scale": "sigma"},
+    // Noyau spatial, en pixels. Optimum benchmark ≈ 1,7 (défaut 1,5).
+    {"name": "sigma_space", "type": "float", "low": 0.5, "high": 5.0},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"sigma_color": 2.5, "sigma_space": 1.5},
+}

@@ -1,0 +1,29 @@
+{
+  // Espace de recherche de « nl_bayes » — chargé par optimization/search_spaces.py.
+  // NL-Bayes natif (MIT). 10 dimensions : budget 60-100, n_initial_points ≈ 20-30. Point de départ = article pour σ < 50 ([0, 255]), niveaux de gris. Imbrications gérées par la méthode : N suit k (30/60/90), fenêtre n = window_factor × k, N ≥ k² + 1. Voir REFERENCE_TECHNIQUE.md §2.6.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Multiplie σ : compense un σ estimé biaisé ; agit sur β·σ² et sur le critère homogène.
+    {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.0},
+    // Taille de patch, étape 1 (article : 5 en gris, 7 à fort bruit). Fixe aussi N₁ et n₁.
+    {"name": "k1", "type": "categorical", "categories": [3, 5, 7]},
+    // Taille de patch, étape 2.
+    {"name": "k2", "type": "categorical", "categories": [3, 5, 7]},
+    // α, fenêtre de recherche n = α·k (article : 7). Plus grand : meilleurs groupes, plus lent.
+    {"name": "window_factor", "type": "float", "low": 3.0, "high": 9.0},
+    // Seuil du critère des zones homogènes : écart-type du groupe ≤ γσ ⇒ moyenne. Article : 1,05.
+    {"name": "gamma", "type": "float", "low": 0.9, "high": 1.3},
+    // Atténuation de l'étape 1, C − β₁σ²I. Article : 1,0.
+    {"name": "beta1", "type": "float", "low": 0.8, "high": 1.2},
+    // Atténuation de l'étape 2, C_b + β₂σ²I. Article : 1,2 (σ < 50), 1,0 sinon.
+    {"name": "beta2", "type": "float", "low": 0.8, "high": 1.5},
+    // Seuil minimal de similarité de l'étape 2 (niveaux² sur [0, 255]). Article : 4.
+    {"name": "tau0", "type": "float", "low": 0.0, "high": 16.0},
+    // Critère homogène à l'étape 1 (article : oui).
+    {"name": "use_area1", "type": "categorical", "categories": [true, false]},
+    // Critère homogène à l'étape 2 (article : non).
+    {"name": "use_area2", "type": "categorical", "categories": [true, false]},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"sigma_scale": 1.0, "k1": 5, "k2": 5, "window_factor": 7.0, "gamma": 1.05, "beta1": 1.0, "beta2": 1.2, "tau0": 4.0, "use_area1": true, "use_area2": false},
+}

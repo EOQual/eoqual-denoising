@@ -1,0 +1,15 @@
+{
+  // Espace de recherche de « nl_bayes_ipol » — chargé par optimization/search_spaces.py.
+  // NL-Bayes, exécutable IPOL (GPL) : seuls σ et les critères homogènes sont réglables en ligne de commande.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Multiplie σ.
+    {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.0},
+    // Critère homogène, étape 1.
+    {"name": "use_area1", "type": "categorical", "categories": [true, false]},
+    // Critère homogène, étape 2.
+    {"name": "use_area2", "type": "categorical", "categories": [true, false]},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"sigma_scale": 1.0, "use_area1": true, "use_area2": false},
+}

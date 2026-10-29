@@ -1,0 +1,11 @@
+{
+  // Espace de recherche de « tgv » — chargé par optimization/search_spaces.py.
+  // TGV d'ordre 2 (deepinv) : λ₁ = 0,1·weight, λ₂ = 0,15·weight.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Régularisation, × σ (plus grand = plus lisse). Défaut calibré 7,5.
+    {"name": "weight", "type": "float", "low": 1.0, "high": 20.0, "scale": "sigma"},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"weight": 7.5},
+}

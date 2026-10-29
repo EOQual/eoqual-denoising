@@ -1,0 +1,17 @@
+{
+  // Espace de recherche de « wavelet » — chargé par optimization/search_spaces.py.
+  // Seuillage d'ondelettes (scikit-image).
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Multiplie σ (force du seuillage).
+    {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.0},
+    // Ondelette PyWavelets.
+    {"name": "wavelet", "type": "categorical", "categories": ["db1", "db2", "db4", "sym4", "sym8", "coif1"]},
+    // Règle de seuil : BayesShrink (par sous-bande) ou VisuShrink (universelle, plus lissante).
+    {"name": "rule", "type": "categorical", "categories": ["BayesShrink", "VisuShrink"]},
+    // Seuillage doux ou dur.
+    {"name": "mode", "type": "categorical", "categories": ["soft", "hard"]},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {"sigma_scale": 1.0, "wavelet": "db2", "rule": "BayesShrink", "mode": "soft"},
+}

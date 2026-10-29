@@ -1,0 +1,11 @@
+{
+  // Espace de recherche de « swinir » — chargé par optimization/search_spaces.py.
+  // SwinIR : un jeu de poids par niveau de bruit, recherche exhaustive (3 points). Pas de point de départ : par défaut, le jeu est choisi selon σ.
+  // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
+  "search_space": [
+    // Jeu de poids (σ sur l'échelle [0, 255] de l'image normalisée).
+    {"name": "noise_level", "type": "categorical", "categories": [15, 25, 50]},
+  ],
+  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
+  "initial_guess": {},
+}
