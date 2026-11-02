@@ -319,9 +319,13 @@ X̂ = Y Θ, Θ (k × k) minimisant une estimation du risque quadratique.
 | 15-35 | 9 | 9 | 18 | 90 |
 | > 35 | 11 | 9 | 20 | 120 |
 
-À noter : à l'étape 1, NL-Ridge a besoin de **n > k** (YᵀY inversible),
-l'inverse de NL-Bayes (N > k²) ; ses patchs sont donc grands et ses
-groupes petits.
+À noter : à l'étape 1, NL-Ridge a besoin de **n > k**, soit k₁ < p₁²
+(YᵀY, de taille k₁ × k₁, est de rang au plus p₁²) — l'inverse de
+NL-Bayes (N > k²) ; ses patchs sont donc grands et ses groupes petits.
+Un réglage avec k₁ ≥ p₁² est refusé (`ValueError`) : la matrice serait
+singulière et le résultat inutilisable (1,6 dB mesurés à p₁ = 5,
+k₁ = 30). L'espace de recherche porte la contrainte correspondante
+(§5.2).
 
 **Validation** : reproduit le code des auteurs à 0,03 dB près sur
 astronaut 256×256 (29,35 contre 29,34 dB à σ = 0,1), en temps comparable
@@ -768,9 +772,19 @@ les réglages par défaut de la méthode (sauf `swinir`, dont le jeu de
 poids est choisi automatiquement selon σ). Ces fichiers sont la source
 unique, chargée par `search_spaces.py`. Un autre fichier au même format
 (JSON ou JSONC, commentaires et virgules finales tolérés) se passe par
-`search_space=` ou `--search-space`. Une contrainte entre dimensions (ex. `patch_distance ≥
-patch_size`) se passe par `space_constraint=` : les points invalides sont
-rejetés au tirage, sans évaluation. Un espace entièrement catégoriel et
+`search_space=` ou `--search-space`.
+
+**Contraintes entre dimensions.** Quand deux dimensions sont liées par
+l'algorithme, l'espace déclare une clé `"constraints"` : une liste
+d'expressions, toutes requises, portant sur les valeurs de l'espace
+(avant conversion par `scale`). Exemple de NL-Ridge :
+`"constraints": ["k1 < p1 * p1"]`. Les points invalides sont rejetés au
+tirage, sans évaluation ; le point de départ est vérifié au chargement.
+Grammaire volontairement restreinte, sans évaluation de code : noms de
+dimensions, nombres, `+ - * / // % **`, comparaisons, `and`, `or`,
+`not`, parenthèses (`build_constraint`). Une contrainte supplémentaire
+peut aussi être passée en Python par `space_constraint=` ; les deux se
+cumulent. Un espace entièrement catégoriel et
 plus petit que le budget (ex. `swinir`, 3 points) est évalué
 **exhaustivement**, sans modèle.
 
@@ -1093,3 +1107,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-10-29 | Espaces de recherche | Passage de dictionnaires Python à un fichier JSONC commenté par méthode ; espace de NL-Bayes étendu à 10 dimensions. |
 | 2026-10-29 | Figures d'optimisation | `plot_evaluations` de scikit-optimize échouait pour un espace à une dimension : tracé manuel dans ce cas. |
 | 2026-10-29 | Tests et exemples | Tests découpés par thème avec fixtures partagées (`conftest.py`) ; tests des utilitaires, des fichiers d'espaces et des exemples ajoutés ; exemples dotés d'options de taille réduite. |
+| 2026-11-02 | Contraintes déclaratives (0.1.1) | L'espace de NL-Ridge autorisait k₁ ≥ p₁² (p₁ = 5, k₁ jusqu'à 40) : YᵀY singulière à l'étape 1, PSNR de 1,6 dB, sans erreur signalée. Correction : clé `"constraints"` dans les fichiers d'espaces, analysée sans évaluation de code et appliquée automatiquement par `optimize_parameters` (mécanisme équivalent au `build_space_constraint` de l'outil d'origine, rendu déclaratif) ; contrainte `k1 < p1 * p1` sur `nl_ridge` et `nl_ridge_inria` ; `nl_ridge_denoise` et `nl_ridge_inria_denoise` refusent un tel réglage. |

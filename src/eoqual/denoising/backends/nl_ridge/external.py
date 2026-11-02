@@ -137,6 +137,9 @@ def nl_ridge_inria_denoise(
 
     params = next(p for bound, p in _RECOMMENDED if sigma_255 <= bound)
     params = {**params, "w": 37, "s": 4, **nlridge_kwargs}
+    from .native import _check_group_size
+
+    _check_group_size(int(params["p1"]), int(params["k1"]))
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"

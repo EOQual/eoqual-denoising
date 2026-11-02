@@ -54,7 +54,7 @@ from typing import Any, Callable
 import numpy as np
 
 from ..utils import check_image, resolve_sigma
-from .search_spaces import get_search_space, validate_search_space
+from .search_spaces import build_constraint, get_search_space, validate_search_space
 
 __all__ = ["optimize_parameters", "OptimizationResult", "default_n_jobs", "METRICS", "PENALTY"]
 
@@ -315,7 +315,8 @@ def optimize_parameters(
     space_constraint : callable, optional
         Contrainte sur les points tirés : reçoit une liste de valeurs (ordre
         des dimensions) et renvoie ``True`` si le point est valide. Les
-        points invalides sont rejetés au tirage, sans évaluation.
+        points invalides sont rejetés au tirage, sans évaluation. S'ajoute
+        aux contraintes déclarées dans l'espace (clé ``"constraints"``).
     log_csv : path, optional
         Journal CSV, une ligne par évaluation (ajout en fin de fichier).
 
@@ -356,6 +357,17 @@ def optimize_parameters(
         data_range = float(reference.max() - reference.min()) or 1.0
     guess = space.get("initial_guess") or {}
     x0 = [[guess[n] for n in names]] if guess else []
+    # Contraintes déclarées dans l'espace (« constraints ») et contrainte
+    # passée en argument : toutes doivent être respectées.
+    declared = build_constraint(space)
+    if declared is not None and space_constraint is not None:
+        user_constraint = space_constraint
+
+        def space_constraint(point):  # noqa: F811 — combinaison des deux
+            return declared(point) and user_constraint(point)
+
+    elif declared is not None:
+        space_constraint = declared
     if space_constraint is not None and x0 and not space_constraint(x0[0]):
         raise ValueError("initial_guess ne respecte pas space_constraint.")
 

@@ -16,6 +16,9 @@
     // Contrainte sur les poids de la régression (linear ou affine).
     {"name": "constraints", "type": "categorical", "categories": ["linear", "affine"]},
   ],
+  // Contrainte : l'étape 1 inverse YᵀY (k1 × k1, de rang ≤ p1²) — il faut plus
+  // de pixels par patch que de patchs par groupe, sinon le résultat est inutilisable.
+  "constraints": ["k1 < p1 * p1"],
   // Point de départ (évalué en premier) : réglages par défaut de la méthode.
   "initial_guess": {"sigma_scale": 1.0, "p1": 9, "p2": 9, "k1": 18, "k2": 90, "constraints": "linear"},
 }

@@ -50,6 +50,18 @@ __all__ = ["nl_ridge_denoise", "nl_ridge_parameters", "CONSTRAINTS"]
 CONSTRAINTS = ("linear", "affine")
 
 
+def _check_group_size(p1: int, k1: int) -> None:
+    """
+    L'étape 1 inverse YᵀY (k₁ × k₁, de rang ≤ n = p₁²) : elle exige plus de
+    pixels par patch que de patchs par groupe, k₁ < p₁² (articles : n > k).
+    Sinon la matrice est singulière et le résultat inutilisable.
+    """
+    if k1 >= p1 * p1:
+        raise ValueError(
+            f"NL-Ridge exige k1 < p1² à l'étape 1 (YᵀY inversible) : k1={k1}, p1={p1} (p1²={p1 * p1})."
+        )
+
+
 def nl_ridge_parameters(sigma_255: float) -> dict:
     """
     Paramètres des auteurs (tableau 1 des deux articles), σ sur [0, 255] :
@@ -200,7 +212,8 @@ def nl_ridge_denoise(
         Fils d'exécution. Par défaut ``min(cœurs, 8)``.
     **overrides
         Remplace un paramètre de :func:`nl_ridge_parameters` : ``p1``,
-        ``p2``, ``k1``, ``k2``, ``window``, ``step``.
+        ``p2``, ``k1``, ``k2``, ``window``, ``step``. Contrainte :
+        ``k1 < p1²`` (``ValueError`` sinon).
 
     Returns
     -------
@@ -218,6 +231,7 @@ def nl_ridge_denoise(
     if unknown:
         raise TypeError(f"Paramètres inconnus : {sorted(unknown)} (autorisés : {sorted(params)})")
     params.update({key: int(v) for key, v in overrides.items()})
+    _check_group_size(params["p1"], params["k1"])
     if min(img.shape) < max(params["p1"], params["p2"]):
         raise ValueError(f"Image trop petite ({img.shape}) pour des patchs de {max(params['p1'], params['p2'])}.")
     threads = n_threads if n_threads is not None else min(os.cpu_count() or 1, 8)

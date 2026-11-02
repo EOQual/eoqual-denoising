@@ -249,3 +249,54 @@ def test_plots_are_written(pair, tmp_path):
     assert all(p.exists() for p in files)
     out = plot_images(clean, noisy, noisy, out_path=tmp_path / "img.png")
     assert out.exists()
+
+
+# --- Contraintes déclarées dans l'espace (« constraints ») ---------------------
+
+
+def test_build_constraint_expressions():
+    from eoqual.denoising.optimization import build_constraint
+
+    space = {
+        "search_space": [{"name": "p1", "type": "int", "low": 3, "high": 13},
+                         {"name": "k1", "type": "int", "low": 5, "high": 60}],
+        "constraints": ["k1 < p1 * p1", "not (p1 == 4) and -p1 < 0"],
+    }
+    c = build_constraint(space)
+    assert c([9, 18]) and not c([5, 30]) and not c([4, 10])
+    assert build_constraint({"search_space": space["search_space"]}) is None
+
+
+@pytest.mark.parametrize("expr", ["__import__('os')", "p1.real > 0", "k1 < p1[0]", "inconnu > 1", "k1 <"])
+def test_build_constraint_rejects_unsafe_or_invalid(expr):
+    from eoqual.denoising.optimization import build_constraint
+
+    space = {"search_space": [{"name": "p1", "type": "int", "low": 3, "high": 13},
+                              {"name": "k1", "type": "int", "low": 5, "high": 60}],
+             "constraints": [expr]}
+    with pytest.raises(ValueError):
+        build_constraint(space)
+
+
+def test_initial_guess_must_satisfy_declared_constraints():
+    space = get_search_space("nl_ridge")
+    space["initial_guess"].update(p1=5, k1=30)  # dans les bornes, mais 30 ≥ 5² = 25
+    with pytest.raises(ValueError, match="contraintes"):
+        validate_search_space(space)
+
+
+def test_nl_ridge_space_declares_group_size_constraint():
+    assert SEARCH_SPACES["nl_ridge"]["constraints"] == ["k1 < p1 * p1"]
+    assert SEARCH_SPACES["nl_ridge_inria"]["constraints"] == ["k1 < p1 * p1"]
+
+
+@needs_skopt
+def test_declared_and_user_constraints_are_both_applied(pair):
+    clean, noisy = pair
+    space = get_search_space("nl_means")
+    space["constraints"] = ["patch_distance >= patch_size"]
+    res = optimize_parameters(
+        noisy, clean, "nl_means", sigma=SIGMA, search_space=space, n_calls=10, n_initial_points=5,
+        space_constraint=lambda p: p[1] <= 9,  # patch_size ≤ 9
+    )
+    assert all(h["patch_distance"] >= h["patch_size"] and h["patch_size"] <= 9 for h in res.history)

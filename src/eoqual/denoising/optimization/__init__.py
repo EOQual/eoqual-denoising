@@ -11,7 +11,13 @@ Voir REFERENCE_TECHNIQUE.md §5 pour la méthode, le dimensionnement du
 budget et les précautions (sur-apprentissage sur l'image de réglage).
 """
 from .optimizer import METRICS, PENALTY, OptimizationResult, default_n_jobs, optimize_parameters
-from .search_spaces import SEARCH_SPACES, get_search_space, load_search_space, validate_search_space
+from .search_spaces import (
+    SEARCH_SPACES,
+    build_constraint,
+    get_search_space,
+    load_search_space,
+    validate_search_space,
+)
 
 __all__ = [
     "optimize_parameters",
@@ -23,4 +29,5 @@ __all__ = [
     "get_search_space",
     "load_search_space",
     "validate_search_space",
+    "build_constraint",
 ]

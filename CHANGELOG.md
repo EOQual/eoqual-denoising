@@ -6,6 +6,19 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.1.1 (2026-11-02)
+
+:   -   **Contraintes déclaratives dans les espaces de recherche** : clé
+        `"constraints"` (expressions sur les dimensions, analysées sans
+        évaluation de code, `build_constraint`), appliquée
+        automatiquement par `optimize_parameters` et cumulable avec
+        `space_constraint=`.
+    -   **Correction NL-Ridge** : l'espace de recherche autorisait
+        k₁ ≥ p₁² (matrice singulière à l'étape 1, résultat inutilisable) ;
+        contrainte `k1 < p1 * p1` ajoutée à `nl_ridge` et
+        `nl_ridge_inria`, et ces méthodes refusent désormais un tel
+        réglage (`ValueError`).
+
 0.1.0 (2026-10-29)
 
 :   -   **17 méthodes de débruitage**, appel unifié

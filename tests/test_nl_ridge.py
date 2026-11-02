@@ -52,3 +52,10 @@ def test_nl_ridge_native_matches_authors_code(clean, noisy):
     a = denoise(noisy, "nl_ridge", sigma=SIGMA)
     b = denoise(noisy, "nl_ridge_inria", sigma=SIGMA)
     assert abs(psnr(clean, a, data_range=1.0) - psnr(clean, b, data_range=1.0)) < 0.2
+
+
+@pytest.mark.parametrize("p1,k1", [(5, 25), (5, 40), (3, 10)])
+def test_nl_ridge_rejects_group_larger_than_patch(noisy, p1, k1):
+    """k1 ≥ p1² : YᵀY singulière à l'étape 1, réglage refusé au lieu d'un résultat inutilisable."""
+    with pytest.raises(ValueError, match="k1 < p1"):
+        denoise(noisy, "nl_ridge", sigma=SIGMA, p1=p1, k1=k1)
