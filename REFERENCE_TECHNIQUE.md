@@ -1001,7 +1001,11 @@ non-régression, pas de benchmark.
 - Réimplémentations MIT depuis les publications : NL-Bayes et NL-Ridge
   **faits** (§2.6, §2.7) ; reste éventuellement BM3D (sous réserve du brevet) — évaluation dans
   `THIRD_PARTY_LICENSES.md` §3.
-- **Bruit coloré** (spatialement corrélé) : voir §9.1.
+- **Bruit coloré** (spatialement corrélé) : voir §9.1 ; le cas du
+  démosaïçage est traité au §10.
+- **DRUNet couleur** : `drunet` est en niveaux de gris ; les poids couleur
+  de deepinv (BSD-3-Clause) donnent, après démosaïçage, 0.2 à 0.9 dB de
+  plus que NL-Bayes couleur (§10.6).
 - **Moteur d'optimisation** : remplacer scikit-optimize (archivé) par
   Optuna (`GPSampler` ou `TPESampler`), en gardant les mêmes fichiers
   d'espaces de recherche (§5.5).
@@ -1045,7 +1049,8 @@ coloré dès qu'un traitement mélange des pixels :
   basses fréquences et prend un aspect « grumeleux » ;
 - **déconvolution et restauration de MTF** : elles amplifient les hautes
   fréquences, le bruit y devient dominant ;
-- **dématriçage** (Bayer) : corrélations spatiales et entre canaux ;
+- **dématriçage** (Bayer) : corrélations spatiales et entre canaux —
+  cas traité en détail au §10 ;
 - **compression** (JPEG, JPEG 2000, CCSDS) : motifs de blocs ou d'ondelettes
   liés à la quantification ;
 - **défauts d'égalisation et rayures** des capteurs pushbroom : bruit
@@ -1075,15 +1080,160 @@ correct alors que le spectre du bruit est très inégal.
 3. **Pistes sans BM3D.** Blanchir le bruit (filtrer l'image par
    1/√S), débruiter avec n'importe quelle méthode du catalogue, puis
    recolorer. C'est simple, mais instable là où S est proche de zéro (il
-   faut régulariser). Autre option, la plus propre : débruiter **avant**
-   le traitement qui colore le bruit, chaque fois que la chaîne le
-   permet (par exemple débruiter avant l'orthorectification).
+   faut régulariser). Autre option : débruiter **avant** le traitement
+   qui colore le bruit, chaque fois que la chaîne le permet (par exemple
+   débruiter avant l'orthorectification). **Exception mesurée : le
+   démosaïçage** — débruiter la mosaïque perd la résolution ; mieux vaut
+   débruiter après, avec un σ majoré (§10.5).
 
 **Validation envisagée.** Simuler un bruit blanc, le colorer par un
 filtre connu (interpolation bicubique, filtre de Wiener inverse), puis
 comparer pour une même méthode : réglage par σ global, blanchiment +
 débruitage + recoloration, et `sigma_psd` pour BM3D.
 
+
+## 10. Cas particulier : débruiter une image démosaïquée
+
+### 10.1 Quand ce chapitre s'applique
+
+Une image couleur issue d'un capteur à **matrice de filtres colorés**
+(Bayer RGGB ou similaire) a été **démosaïquée** : chaque pixel n'a mesuré
+qu'une couleur, les deux autres ont été interpolées. Le bruit n'est alors
+plus celui du capteur — il est corrélé entre pixels et entre canaux
+(§9.1), et un débruiteur réglé avec le σ du capteur laisse des taches
+colorées. Pour une image en niveaux de gris, une image panchromatique ou
+multispectrale à un capteur par bande, ou une mosaïque brute non
+démosaïquée, ce chapitre ne s'applique pas : §4 (bruit poisson-gaussien)
+et §6 suffisent.
+
+Ce chapitre donne la recette côté débruitage ; la théorie détaillée, la
+mesure pour chaque démosaïqueur et les études sur orthophoto sont dans la
+référence technique d'**eoqual-demosaicing**, chapitre 11.
+
+### 10.2 Modèle de bruit du capteur
+
+Pour une luminance linéaire normalisée ``L ∈ [0, 1]`` (niveau d'obscurité
+soustrait) :
+
+```
+var(L) = a + b · L         a = (σ_r / N_sat)²  (plancher : lecture, obscurité)
+                           b = 1 / N_sat        (pente : bruit photonique)
+```
+
+avec ``N_sat`` les électrons à pleine échelle et ``σ_r`` le bruit de
+lecture en électrons. C'est le modèle du §4.1, écrit en luminance
+normalisée (le §4.1 note la même droite ``σ² = a·μ + b`` avec les rôles
+de ``a`` et ``b`` inversés). Correspondance avec les fonctions du §4 :
+
+```python
+from eoqual.denoising.vst import generalized_anscombe, inverse_generalized_anscombe
+gain, read_noise = 1.0 / b, a ** 0.5          # var = a + b·L
+g = generalized_anscombe(L, gain, read_noise)  # bruit d'écart-type ≈ 1
+```
+
+### 10.3 Ce que le démosaïçage fait du bruit
+
+Un démosaïqueur calcule chaque canal comme une moyenne pondérée de
+photosites voisins (poids ``w``, ``Σ w = 1``). Le bruit de sortie en est
+la même combinaison : sa variance par canal vaut ``σ²(L)·Σ w²`` (≤ σ²),
+et les poids partagés le **corrèlent** entre pixels et entre canaux. En
+luminance ``Y = (R+G+B)/√3``, des canaux corrélés positivement
+**augmentent** la variance ; en chrominance (différences de canaux), elle
+**diminue**, mais ce qui reste est de basse fréquence. On note ``κ_Y`` le
+rapport des variances de Y après / avant démosaïçage (eoqual-demosaicing
+§11.3, champ uniforme) :
+
+| Démosaïqueur | κ_Y | √κ_Y + 0.2 |
+|---|---|---|
+| `bilinear` | 0.58 | 0.96 |
+| `ari` | 0.62 | 0.99 |
+| `ri`, `mlri` | 0.79 à 0.87 | 1.09 à 1.13 |
+| `ha` (Hamilton-Adams) | 1.35 | 1.36 |
+| `malvar` | 2.05 | 1.63 |
+| `gbtf` | 2.41 | 1.75 |
+| `dlmmse` | 2.58 | 1.80 |
+
+### 10.4 Recette
+
+1. **Démosaïquer** (eoqual-demosaicing), en luminance linéaire.
+2. **Stabiliser** l'image démosaïquée avec ``(a, b)`` du capteur.
+3. **Débruiter avec σ = C**, ``C = √κ_Y + 0.2``, avec un débruiteur
+   **couleur** (`nl_bayes` en mode `"yuv"`).
+4. **Inverser** la stabilisation (inverse exacte non biaisée, §4.3).
+
+```python
+g = generalized_anscombe(rgb, 1.0 / b, a ** 0.5)
+d = nl_bayes_denoise(g, sigma=C, data_range=(g.min(), g.max()))
+rgb_debruitee = inverse_generalized_anscombe(d, 1.0 / b, a ** 0.5)
+```
+
+Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
+bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
+
+Mode opératoire complet sur données réelles (unités de ``(a, b)``,
+valeurs de C à balayer pour Hamilton-Adams et GBTF, critères sans vérité
+terrain) : eoqual-demosaicing, §11.11, exemple
+`examples/real_data_protocol.py` et notebook `examples/demosaicing_noise.ipynb`.
+
+**Pourquoi √κ_Y + 0.2.** NL-Bayes couleur règle son étape principale sur
+le bruit de la luminance, d'écart-type ``√κ_Y`` dans le domaine stabilisé
+(d'où ``√κ_Y``) ; le terme ``+0.2``, empirique, efface le bruit de
+chrominance basse fréquence, que le débruiteur prend sinon pour du signal.
+Validation (19 démosaïqueurs × 3 niveaux de bruit × 4 zones d'une
+orthophoto, eoqual-demosaicing §11.4) — perte moyenne par rapport au
+meilleur C de chaque cas :
+
+| Règle | bruit fort | moyen | faible |
+|---|---|---|---|
+| C = 1 (σ du capteur) | 1.12 dB | 0.47 dB | 0.22 dB |
+| C = 1.5 fixe (Jin et al. 2020) | 0.31 dB | 0.18 dB | 0.15 dB |
+| C = 1.25 fixe | 0.63 dB | 0.20 dB | 0.13 dB |
+| **C = √κ_Y + 0.2** | **0.08 dB** | **0.04 dB** | **0.05 dB** |
+
+(Le facteur fixe 1.5 de Jin, Facciolo & Morel 2020 correspond à un
+démosaïqueur de κ_Y ≈ 1.7 ; il est trop fort pour les méthodes à faible
+κ_Y et trop faible pour GBTF ou DLMMSE.)
+
+### 10.5 Deux erreurs à éviter
+
+**Estimer σ sur l'image démosaïquée.** `estimate_noise_sigma` (§6)
+mesure la sous-bande d'ondelettes la plus fine, c'est-à-dire les hautes
+fréquences du bruit — que le démosaïçage a atténuées. Après
+Hamilton-Adams, il trouve **la moitié** du vrai σ (×0.50 à bruit fort,
+×0.56 à bruit moyen) : NL-Bayes sous-débruite et laisse des taches
+colorées (−2.6 dB, ΔE 5.5 au lieu de 3.3 à bruit fort). Estimer σ — ou
+``(a, b)`` — sur la **mosaïque brute** (sous-plans R, G1, G2, B, où le
+bruit est encore blanc ; ×1.00 à ×1.15 du vrai σ) ou sur le capteur
+(PTC d'eoqual-measure).
+
+**Débruiter la mosaïque avant de démosaïquer.** Sur les quatre
+sous-plans en demi-résolution, le bruit est blanc et le modèle exact —
+mais la résolution est réduite et la position relative des couleurs
+perdue : −0.3 à −0.9 dB par rapport à « démosaïquer puis débruiter avec
+C » (eoqual-demosaicing §11.6, Jin et al. 2020).
+
+### 10.6 Résultats indicatifs
+
+Orthophoto (© Toulouse Métropole, Licence Ouverte v2.0), bruit de capteur
+simulé, CPSNR (dB) en sRGB, bruit fort / moyen / faible
+(eoqual-demosaicing §11.6-11.7) :
+
+| Chaîne | fort | moyen | faible |
+|---|---|---|---|
+| HA → NL-Bayes, σ du capteur (C = 1), stabilisation avec (a, b) | 30.97 | 34.00 | 35.79 |
+| HA → NL-Bayes, C = √κ_Y + 0.2 = 1.36 | 31.54 | 34.13 | 35.72 |
+| `gbtf` → NL-Bayes, C = 1.75 | 32.16 | 35.11 | 37.42 |
+| `ari` → NL-Bayes, C = 1.0 | 31.46 | 35.22 | 37.92 |
+| `ari` → DRUNet couleur (deepinv), 1.5σ₀ (autre tirage, §11.6) | 32.76 | 35.51 | 37.83 |
+
+Le choix du démosaïqueur pèse autant que celui de σ : Hamilton-Adams a
+ses propres fausses couleurs, que le débruitage ne corrige pas
+(eoqual-demosaicing §11.8). DRUNet demande un facteur plus fort que
+NL-Bayes (1.5 à 1.75 avec HA).
+
+**Référence** : Q. Jin, G. Facciolo, J.-M. Morel, « A Review of an Old
+Dilemma: Demosaicking First, or Denoising First? », CVPR Workshops 2020
+(arXiv 2004.11577).
 
 ## Annexe A — Historique des choix et corrections
 

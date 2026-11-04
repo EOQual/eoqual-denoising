@@ -6,6 +6,16 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.1.2 (2026-11-04)
+
+:   -   `REFERENCE_TECHNIQUE.md` §10 : **débruiter une image
+        démosaïquée** (cas particulier du bruit coloré) — modèle
+        ``var = a + b·L`` et correspondance avec la GAT, effet du
+        démosaïçage sur le bruit (κ_Y), facteur ``σ = √κ_Y + 0.2``,
+        erreurs à éviter (σ estimé après démosaïçage : moitié du vrai),
+        résultats indicatifs ; renvois croisés avec eoqual-demosaicing
+        (chapitre 11). §9.1 nuancé (débruiter après le démosaïçage).
+
 0.1.1 (2026-11-02)
 
 :   -   **Contraintes déclaratives dans les espaces de recherche** : clé

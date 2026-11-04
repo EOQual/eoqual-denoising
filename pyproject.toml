@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "eoqual-denoising"
-version = "0.1.1"
+version = "0.1.2"
 description = "Collection of Earth observation image denoising methods"
 authors = ["Olivier Amram <olivier.amram@free.fr>"]
 maintainers = [

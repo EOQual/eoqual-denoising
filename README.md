@@ -112,6 +112,16 @@ biaisée** :
 out = d.vst_denoise(raw, "drunet", gain=2.0, read_noise_dn=1.5, offset_dn=100.0)
 ```
 
+### Image couleur démosaïquée (Bayer)
+
+Le démosaïçage corrèle le bruit et en change le niveau : débruiter avec
+le σ du capteur laisse des taches colorées, et estimer σ sur l'image
+démosaïquée en trouve la moitié. Recette (stabilisation avec le modèle
+de bruit du capteur ``var = a + b·L``, puis NL-Bayes couleur avec
+``σ = √κ_Y + 0.2`` selon le démosaïqueur) : voir
+[REFERENCE_TECHNIQUE.md §10](REFERENCE_TECHNIQUE.md#10-cas-particulier--débruiter-une-image-démosaïquée),
+et la référence technique d'eoqual-demosaicing, chapitre 11.
+
 ### Optimiser les paramètres sur une image de référence
 
 ```python
