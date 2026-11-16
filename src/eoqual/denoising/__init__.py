@@ -19,14 +19,15 @@ Bruit poisson-gaussien (image brute en DN, paramètres de la PTC) :
 >>> clean = d.vst_denoise(raw, "bm3d", gain=2.0, read_noise_dn=1.5, offset_dn=100)
 
 Aucune méthode ne charge de dépendance lourde ou tierce à l'import de ce
-paquet — ``drunet_denoise`` (extra ``deep``), ``bm3d_denoise`` (extra
+paquet — ``drunet_denoise`` et les autres réseaux (extra ``neural``,
+fournis par eoqual-neural), ``bm3d_denoise`` (extra
 ``bm3d``, **non commercial**), ``nl_ridge_inria_denoise`` (clone externe,
 AGPL-3.0) et ``nl_bayes_ipol_denoise`` (exécutable externe, GPL-3.0+) ne
 chargent leur backend qu'à l'appel. Voir ``README.md`` pour
 l'installation et ``THIRD_PARTY_LICENSES.md`` pour l'audit des licences.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 __title__ = "eoqual.denoising"
 __description__ = "Collection of Earth observation image denoising methods"
 __url__ = "https://github.com/EOQual/eoqual-denoising"
@@ -43,11 +44,13 @@ from .backends.bilateral.opencv_impl import bilateral_denoise  # noqa: F401
 from .backends.nl_means.skimage_impl import nl_means_denoise  # noqa: F401
 from .backends.tv.skimage_impl import tv_chambolle_denoise, tv_bregman_denoise  # noqa: F401
 from .backends.wavelet.skimage_impl import wavelet_denoise  # noqa: F401
-from .backends.drunet.deepinv_impl import drunet_denoise  # noqa: F401
-from .backends.deepinv_zoo.models import (  # noqa: F401
+from .backends.neural import (  # noqa: F401
+    drunet_denoise,
     swinir_denoise,
     restormer_denoise,
     gsdrunet_denoise,
+)
+from .backends.deepinv_zoo.models import (  # noqa: F401
     epll_denoise,
     tgv_denoise,
     wavelet_dict_denoise,

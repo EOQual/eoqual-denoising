@@ -4,7 +4,8 @@ Registre central des méthodes de débruitage disponibles dans
 
 Chaque entrée décrit :
 
-- ``extra`` : extra pip requis (``None`` = socle, ``"deep"``, ``"bm3d"``,
+- ``extra`` : extra pip requis (``None`` = socle, ``"neural"`` (réseaux,
+  eoqual-neural), ``"deep"``, ``"bm3d"``,
   ``"deep + ptwt"``) ;
 - ``external`` : composant à fournir par l'utilisateur hors pip (``None``
   si aucun) — clone de dépôt ou exécutable compilé ;
@@ -73,28 +74,28 @@ METHODS_CONFIGS: OrderedDict = OrderedDict(
             "reference": "Herbreteau & Kervrann (2022), ICIP",
         },
         "drunet": {
-            "extra": "deep",
+            "extra": "neural",
             "external": None,
             "license": "BSD-3-Clause (deepinv, code et poids)",
             "restriction": None,
             "reference": "Zhang et al. (2022), IEEE TPAMI 44(10)",
         },
         "swinir": {
-            "extra": "deep",
+            "extra": "neural",
             "external": None,
             "license": "Apache-2.0 (poids SwinIR) / BSD-3-Clause (deepinv)",
             "restriction": None,
             "reference": "Liang et al. (2021), ICCV Workshops",
         },
         "restormer": {
-            "extra": "deep",
+            "extra": "neural",
             "external": None,
             "license": "MIT (poids Restormer) / BSD-3-Clause (deepinv)",
             "restriction": None,
             "reference": "Zamir et al. (2022), CVPR",
         },
         "gsdrunet": {
-            "extra": "deep",
+            "extra": "neural",
             "external": None,
             "license": "BSD-3-Clause (deepinv) / MIT (GSPnP amont)",
             "restriction": "Licence des poids non déclarée",

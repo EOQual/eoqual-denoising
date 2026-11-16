@@ -74,6 +74,14 @@ def estimate_noise_sigma(image: np.ndarray) -> float:
     -------
     float
         Écart-type estimé, dans les unités de l'image.
+
+    Notes
+    -----
+    L'estimateur ne voit que les hautes fréquences du bruit. Sur une image
+    démosaïquée, où ces fréquences sont atténuées, il sous-estime σ
+    (environ la moitié après Hamilton-Adams, REFERENCE_TECHNIQUE.md §6.6) :
+    fournir alors σ depuis le modèle de bruit du capteur ou l'estimer sur
+    la mosaïque brute.
     """
     from skimage.restoration import estimate_sigma
 

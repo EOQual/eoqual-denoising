@@ -147,7 +147,10 @@ avec les réglages optimisés sur la moitié de réglage.
 | `restormer` | 33,86 | — | — | — | — | aucun paramètre réglable |
 
 ² 60 évaluations dont 20 aléatoires (espaces plus grands) ; les autres
-lignes : 25 évaluations.
+lignes : 25 évaluations. La ligne `nl_bayes` a été mesurée avec l'espace
+de l'époque (10 dimensions, dont β₁, β₂, γ) ; l'espace par défaut n'en
+garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
+(`OPTIMISATION.md` §2.3).
 
 ### 3.1 Lecture
 

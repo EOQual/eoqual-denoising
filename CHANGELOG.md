@@ -6,6 +6,25 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.3.0 (2026-11-16)
+
+:   -   **Réseaux de neurones déplacés dans eoqual-neural** : DRUNet,
+        SwinIR, Restormer et GS-DRUNet sont fournis par le nouveau module
+        eoqual-neural (réseaux rangés par rôle, PyTorch et poids en un
+        seul endroit). Même appel (`denoise(image, "drunet", …)`,
+        `drunet_denoise`, `vst_denoise(..., "drunet")`), mêmes sorties.
+        Adaptation dans `backends/neural.py` ; anciens chemins conservés.
+    -   **Extra `neural`** (eoqual-neural) ; l'extra `deep` le contient
+        pour compatibilité et sert aux méthodes classiques calculées avec
+        PyTorch (EPLL, TGV, `wavelet_dict`, `nl_ridge_inria`).
+    -   **Espace de recherche de NL-Bayes réduit à 7 dimensions** : β₁,
+        β₂ et γ retirés, redondants avec `sigma_scale` (multiplier σ par
+        s équivaut exactement à multiplier β₁, β₂ par s² et γ par s ;
+        `OPTIMISATION.md` §2.3). Budget indicatif 40-60 évaluations.
+    -   `estimate_noise_sigma` : note sur la sous-estimation de σ après
+        démosaïçage (≈ ×0,5 après Hamilton-Adams) ;
+        `examples/optimize_parameters.py` avertit dans ce cas.
+
 0.2.2 (2026-11-16)
 
 :   -   **Étude de sensibilité de τ₀** (NL-Bayes) : une règle relative

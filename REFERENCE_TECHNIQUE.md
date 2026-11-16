@@ -204,12 +204,12 @@ regroupement et le réglage de σ sont détaillés au §4.
 | k₁, k₂ | côté des patchs (étapes 1 et 2) ; dimension du modèle gaussien d = k² | 5 (σ < 50), 7 au-delà | {3, 5, 7} | petit : peu de structure, sensible au bruit ; grand : groupes moins similaires, covariance d×d mal estimée |
 | N₁, N₂ | nombre de patchs du groupe (étape 2 : minimum avant le seuil τ) | 30 / 60 / 90 pour k = 3 / 5 / 7 | suit k (règle de l'article) | petit : covariance singulière ou bruitée ; grand : patchs moins similaires |
 | n₁, n₂ (= α·k) | côté de la fenêtre de recherche | α = 7 | `window_factor` α ∈ [3 ; 9] | petit : groupes pauvres ; grand : plus lent, gain faible (tableau 6) |
-| γ | seuil du critère des zones homogènes : écart-type du groupe ≤ γσ ⇒ moyenne | 1,05 | [0,9 ; 1,3] | petit : bruit résiduel dans les aplats ; grand : perte de petits détails |
-| β₁ | atténuation de l'étape 1, C − β₁σ²I | 1,0 | [0,8 ; 1,2] | < 1 : sous-débruitage ; > 1 : sur-lissage |
-| β₂ | atténuation de l'étape 2, C_b + β₂σ²I | 1,2 (σ < 50), 1,0 sinon | [0,8 ; 1,5] | idem, sur le filtre de Wiener |
+| γ | seuil du critère des zones homogènes : écart-type du groupe ≤ γσ ⇒ moyenne | 1,05, quel que soit σ | fixé à 1,05 (constante de l'article ; redondant avec `sigma_scale`) | petit : bruit résiduel dans les aplats ; grand : perte de petits détails |
+| β₁ | atténuation de l'étape 1, C − β₁σ²I | 1,0 | fixé à 1,0 (idem) | < 1 : sous-débruitage ; > 1 : sur-lissage |
+| β₂ | atténuation de l'étape 2, C_b + β₂σ²I | 1,2 (σ < 50), 1,0 sinon | non optimisé : règle de l'article, appliquée au σ après `sigma_scale` | idem, sur le filtre de Wiener |
 | τ₀ | seuil minimal de similarité de l'étape 2 (niveaux²) | 4 | [0 ; 32] | 0 : groupes limités à N₂ ; grand : patchs dissemblables agrégés (tableau 7) |
 | `use_area1`, `use_area2` | critère homogène à chaque étape | oui / non | {oui, non} | tableau 9 de l'article |
-| `sigma_scale` | multiplie σ (pas un terme de l'article) | 1 | [0,5 ; 2] | compense un σ estimé biaisé ; agit sur β·σ² et sur γσ |
+| `sigma_scale` | multiplie σ (pas un terme de l'article) | 1 | [0,5 ; 2,5] | compense un σ estimé biaisé ; agit sur β·σ² et sur γσ |
 
 **Imbrications** (appliquées par `resolve_parameters`) :
 
@@ -223,18 +223,18 @@ regroupement et le réglage de σ sont détaillés au §4.
   recalcule n.
 - **σ, β et γ agissent ensemble** : β·σ² est la variance de bruit
   retirée à la covariance, et γσ le seuil d'homogénéité. Multiplier σ
-  par `sigma_scale` revient à multiplier β par `sigma_scale`² et γ par
-  `sigma_scale`. Optimiser à la fois `sigma_scale`, β et γ introduit donc
-  une redondance partielle (crêtes dans l'espace de recherche), ce qui
-  justifie un budget plus large.
+  par `sigma_scale` revient **exactement** à multiplier β₁, β₂ par
+  `sigma_scale`² et γ par `sigma_scale` (même image au bit près). D'où
+  l'espace par défaut : `sigma_scale` optimisé, β₁, β₂, γ fixés à
+  l'article (`OPTIMISATION.md` §2.3).
 - **k et σ** : l'article fait croître k avec le bruit (paliers à 50 et
   70). Un réglage optimisé à un σ donné ne se transpose pas tel quel à un
   autre niveau de bruit.
 
-Ces 10 dimensions sont initialisées dans
-`optimization/spaces/nl_bayes.jsonc` (point de départ = article, σ < 50,
-niveaux de gris). Budget conseillé : 60 à 100 évaluations, dont 20 à 30
-aléatoires.
+Les 7 dimensions optimisées (`sigma_scale`, k₁, k₂, α, τ₀, `use_area1`,
+`use_area2`) sont initialisées dans `optimization/spaces/nl_bayes.jsonc`
+(point de départ = article, σ < 50, niveaux de gris). Budget conseillé :
+40 à 60 évaluations, dont 15 à 20 aléatoires.
 
 #### Deux moteurs
 
@@ -348,9 +348,19 @@ fermée), couleur.
 
 ## 3. Méthodes en extra ou composant externe
 
-### 3.1 `drunet` — réseau DRUNet (extra `deep`)
+**Réseaux de neurones (§3.1 à §3.4).** Depuis la version 0.3.0, DRUNet,
+SwinIR, Restormer et GS-DRUNet sont fournis par
+[eoqual-neural](https://github.com/EOQual/eoqual-neural), qui regroupe les
+réseaux d'EOQual par rôle (débruiteur appris, réseau déplié…). eoqual-denoising
+n'en garde que l'adaptation à son contrat (`backends/neural.py` : unités du
+capteur, σ estimé, `data_range`), derrière le même appel
+`denoise(image, "drunet", sigma=…)` ; extra `neural`. Les descriptions
+ci-dessous restent valables ; le code des réseaux est dans
+`eoqual.neural.denoisers`.
 
-**Fichier** : `backends/drunet/deepinv_impl.py` — `deepinv.models.DRUNet`.
+### 3.1 `drunet` — réseau DRUNet (extra `neural`)
+
+**Fichier** : `eoqual.neural.denoisers` (adaptation : `backends/neural.py`) — `deepinv.models.DRUNet`.
 **Référence** : Zhang et al. (2022).
 
 U-Net à quatre échelles et blocs résiduels. Le niveau de bruit lui est
@@ -369,9 +379,9 @@ d'hallucinations de texture. **Valider sur données capteur avant tout
 usage opérationnel.** Temps CPU : ~2,5 s pour 256×256 sur la machine de développement ;
 GPU fortement recommandé pour les grandes scènes.
 
-### 3.2 `swinir` — transformeur SwinIR (extra `deep`)
+### 3.2 `swinir` — transformeur SwinIR (extra `neural`)
 
-**Fichier** : `backends/deepinv_zoo/models.py` — `deepinv.models.SwinIR`.
+**Fichier** : `eoqual.neural.denoisers` (adaptation : `backends/neural.py`) — `deepinv.models.SwinIR`.
 **Référence** : Liang et al. (2021).
 
 Transformeur à fenêtres glissantes (Swin) : l'auto-attention est calculée
@@ -386,9 +396,9 @@ choisi automatiquement (paramètre `noise_level` pour l'imposer).
 DRUNet). C'est le modèle le plus lent du catalogue (~7 s en CPU pour
 256×256), et chaque jeu de poids pèse ~45 Mo.
 
-### 3.3 `restormer` — transformeur Restormer (extra `deep`)
+### 3.3 `restormer` — transformeur Restormer (extra `neural`)
 
-**Fichier** : `backends/deepinv_zoo/models.py` — `deepinv.models.Restormer`.
+**Fichier** : `eoqual.neural.denoisers` (adaptation : `backends/neural.py`) — `deepinv.models.Restormer`.
 **Référence** : Zamir et al. (2022).
 
 Transformeur dont l'attention porte sur les **canaux** plutôt que sur
@@ -403,9 +413,9 @@ du niveau de bruit : à faible flux, même après stabilisation de variance
 (§5), il perd 5 à 8,5 dB face à DRUNet. Ne l'utiliser que dans son domaine
 (σ ≤ 0,2 en dynamique [0, 1]).
 
-### 3.4 `gsdrunet` — GS-DRUNet (extra `deep`)
+### 3.4 `gsdrunet` — GS-DRUNet (extra `neural`)
 
-**Fichier** : `backends/deepinv_zoo/models.py` — `deepinv.models.GSDRUNet`.
+**Fichier** : `eoqual.neural.denoisers` (adaptation : `backends/neural.py`) — `deepinv.models.GSDRUNet`.
 **Référence** : Hurault, Leclaire & Papadakis (2022).
 
 Même architecture que DRUNet, mais le débruiteur est défini comme un
@@ -742,6 +752,11 @@ luminance L (niveau d'obscurité soustrait) :
 var(L) = a + b·L        a : plancher (bruit de lecture²)        b : pente (bruit photonique, 1/gain)
 ```
 
+**Convention, valable dans tout le module (et dans eoqual-demosaicing) :
+a est le plancher, b la pente.** Un bruit stationnaire d'écart-type σ
+s'écrit donc a = σ², b = 0. eoqual-measure note la même droite
+σ² = a·μ + b avec les lettres inversées (§5.1).
+
 Les coefficients `a` et `b` se mesurent : courbe de transfert photonique
 (PTC d'eoqual-measure) ou recette en vol. Le bruit est faible dans les
 zones sombres et fort dans les zones claires : un σ unique ne peut pas
@@ -836,9 +851,12 @@ Une image brute de capteur suit, pixel par pixel :
 - `offset_dn` = niveau d'obscurité en DN.
 
 La variance vaut σ²(z) = (z̄ − offset)/K + σ_DN² : elle **croît avec le
-signal**. C'est exactement la droite de la PTC, σ²(μ) = a·μ + b avec
-a = 1/K et b = σ_DN². Les paramètres se lisent donc directement sur les
-mesures d'eoqual-measure : `measure_ptc(...).gain`,
+signal**. C'est le modèle du §4.4, `var(L) = a + b·L`, avec
+**a = σ_DN²** (plancher) et **b = 1/K** (pente), L = z̄ − offset.
+Attention : eoqual-measure écrit la même droite σ²(μ) = a·μ + b, avec
+les rôles de a et b **inversés** (a pente, b plancher). Pour éviter toute
+confusion, passer par les grandeurs physiques, qui se lisent
+directement sur ses mesures : `measure_ptc(...).gain`,
 `.read_noise_dn`, et le niveau moyen de `measure_dark_frame` pour
 l'offset.
 
@@ -1366,3 +1384,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-11-16 | Optimisation séparée | Le chapitre « Optimisation des paramètres » (ex-§7) et le réglage de σ (ex-§4.6, détail du §6.5) passent dans `OPTIMISATION.md` ; les §8 à §11 deviennent §7 à §10. Le cœur de métier (méthodes, σ, stabilisation, image démosaïquée) reste ici. |
 | 2026-11-16 | `noise_factor` (0.2.1) | `vst_denoise` gagne un paramètre `noise_factor` (σ dans le domaine stabilisé, défaut 1, avertissement hors de [0,5 ; 2,5]) et accepte une image couleur pour `nl_bayes` : la recette d'une image démosaïquée (§6.4) passe par lui au lieu d'enchaîner GAT, méthode et inverse à la main. Le refus de `sigma` est conservé (erreur plutôt qu'avertissement), avec un message qui oriente vers `noise_factor`. L'optimiseur et les exemples passent par `vst_denoise`. |
 | 2026-11-16 | Étude de τ₀ | Règle τ₀ = c·σ² testée contre τ₀ = 4. Ajustement (60 cas, gris et stabilisation) : c = 0,005, perte moyenne face au meilleur τ₀ réduite de 0,09 à 0,04 dB. Validation indépendante (62 cas : autres images, autre graine, couleur `yuv`) : la règle fait moins bien que τ₀ = 4 en gris (−0,024 dB en moyenne, −0,53 au pire) et en couleur (−0,036, −0,59 au pire), à peine mieux avec stabilisation (+0,014). Règle abandonnée, τ₀ = 4 conservé ; borne haute de τ₀ dans l'espace de NL-Bayes portée de 16 à 32 (optimum jusqu'à ~30 en couleur). Script : `examples/tau0_study.py`. |
+| 2026-11-16 | Réseaux dans eoqual-neural (0.3.0) | DRUNet, SwinIR, Restormer et GS-DRUNet passent dans le nouveau module eoqual-neural (réseaux rangés par rôle, poids et PyTorch en un seul endroit). `backends/neural.py` adapte le contrat d'eoqual-denoising ; anciens chemins (`backends/drunet/deepinv_impl.py`, `backends/deepinv_zoo/models.py`) conservés en renvoi ; extra `neural` créé, `deep` le contient pour compatibilité. EPLL, TGV et `wavelet_dict` restent ici : ce ne sont pas des réseaux. Sorties identiques (tests inchangés). |

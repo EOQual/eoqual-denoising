@@ -47,7 +47,8 @@ rich, toutes sous licence permissive.
 
 | Extra | Commande | Débloque | Pourquoi optionnel |
 |---|---|---|---|
-| `deep` | `pip install "eoqual-denoising[deep]"` | `drunet`, `swinir`, `restormer`, `gsdrunet`, `epll`, `tgv` (et prérequis de `nl_ridge_inria`, `wavelet_dict`) | Dépendance lourde (PyTorch). Code BSD-3-Clause ; ⚠️ poids de `gsdrunet` et `epll` sans licence déclarée, voir [§2.2](THIRD_PARTY_LICENSES.md#22-extras-pip-optionnels) |
+| `neural` | `pip install "eoqual-denoising[neural]"` | réseaux de neurones `drunet`, `swinir`, `restormer`, `gsdrunet`, fournis par [eoqual-neural](https://github.com/EOQual/eoqual-neural) | Dépendance lourde (PyTorch, deepinv). ⚠️ poids de `gsdrunet` sans licence déclarée, voir [§2.2](THIRD_PARTY_LICENSES.md#22-extras-pip-optionnels) |
+| `deep` | `pip install "eoqual-denoising[deep]"` | méthodes classiques calculées avec PyTorch : `epll`, `tgv` (et prérequis de `nl_ridge_inria`, `wavelet_dict`) ; inclut aussi `neural` | Dépendance lourde (PyTorch). Code BSD-3-Clause ; ⚠️ poids de `epll` sans licence déclarée |
 | `optim` | `pip install "eoqual-denoising[optim]"` | optimisation des paramètres (`optimize_parameters`) | scikit-optimize (BSD-3-Clause), inutile pour débruiter |
 | `ptwt` | `pip install "eoqual-denoising[deep,ptwt]"` | `wavelet_dict` | ⚠️ `ptwt` est sous **EUPL-1.2** (copyleft) : lire [§2.2](THIRD_PARTY_LICENSES.md#22-extras-pip-optionnels) avant d'installer |
 | `bm3d` | `pip install "eoqual-denoising[bm3d]"` | `bm3d` | ⚠️ Paquet `bm3d` de Tampere University sous licence **non commerciale** : **lire [THIRD_PARTY_LICENSES.md §2.2](THIRD_PARTY_LICENSES.md#22-extras-pip-optionnels) avant d'installer** |
@@ -251,7 +252,8 @@ sont bienvenues. Voir **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 - scikit-image [https://scikit-image.org/]
 - OpenCV [https://opencv.org/]
 - PyWavelets [https://pywavelets.readthedocs.io/]
-- DeepInverse [https://deepinv.github.io/] (DRUNet, SwinIR, Restormer, GS-DRUNet, EPLL, TGV, dictionnaire d'ondelettes ; extra `deep`)
+- DeepInverse [https://deepinv.github.io/] (EPLL, TGV, dictionnaire d'ondelettes ; extra `deep`)
+- eoqual-neural [https://github.com/EOQual/eoqual-neural] (réseaux DRUNet, SwinIR, Restormer, GS-DRUNet, via DeepInverse ; extra `neural`)
 - SwinIR [https://github.com/JingyunLiang/SwinIR], Restormer [https://github.com/swz30/Restormer], GSPnP [https://github.com/samuro95/GSPnP] (poids et architectures d'origine)
 - PyTorch Wavelet Toolbox [https://github.com/v0lta/PyTorch-Wavelet-Toolbox] (extra `ptwt`)
 - bm3d, Tampere University [https://pypi.org/project/bm3d/] (Mäkinen, Azzari & Foi ; extra `bm3d`)
