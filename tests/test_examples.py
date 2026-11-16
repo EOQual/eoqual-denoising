@@ -95,3 +95,12 @@ def test_nl_bayes_benchmark(tmp_path):
     run("nl_bayes_benchmark.py", "--size", 128, "--sigmas", 0.1, "--out", out)
     text = out.read_text(encoding="utf-8")
     assert "`yuv`" in text and "boucle" in text
+
+
+@pytest.mark.skipif(importlib.util.find_spec("skopt") is None, reason="scikit-optimize absent (extra optim)")
+def test_optimize_parameters_color_kappa(tmp_path):
+    stdout = run("optimize_parameters.py", "--method", "nl_bayes", "--n-calls", 3, "--n-initial-points", 2,
+                 "--test-sigma", 0.1, "--kappa-y", 1.35, "--output-dir", tmp_path, "--no-plot")
+    assert "√1.35 + 0.2" in stdout
+    img = cv2.imread(str(tmp_path / "nl_bayes_denoised.tif"), cv2.IMREAD_UNCHANGED)
+    assert img.ndim == 3

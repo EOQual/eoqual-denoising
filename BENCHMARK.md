@@ -35,7 +35,7 @@ méthode, voir `REFERENCE_TECHNIQUE.md` ; pour les licences,
 | Réglage / évaluation | **moitié gauche** (512×256) pour l'optimisation, **moitié droite** (512×256) pour toutes les mesures. Contenus différents, tirages de bruit différents (graines 1 et 2) |
 | Bruit | blanc gaussien additif, σ ∈ {0,05 ; 0,1 ; 0,2}, **σ connu** et transmis aux méthodes |
 | Scores | PSNR (dB) et SSIM, référence = image propre |
-| Optimisation | σ = 0,1 ; optimisation bayésienne, 25 évaluations dont 8 aléatoires, graine 0, espaces de recherche par défaut (`REFERENCE_TECHNIQUE.md` §5.2) ; recherche exhaustive pour `swinir` (3 jeux de poids) |
+| Optimisation | σ = 0,1 ; optimisation bayésienne, 25 évaluations dont 8 aléatoires, graine 0, espaces de recherche par défaut (`OPTIMISATION.md` §3) ; recherche exhaustive pour `swinir` (3 jeux de poids) |
 | Machine | CPU arm64 (macOS), PyTorch sur CPU, un seul processus |
 | Script | `examples/benchmark.py` (partie A et B), `examples/nl_bayes_benchmark.py` (§8) |
 
@@ -166,12 +166,12 @@ lignes : 25 évaluations.
   EPLL (σ sous-évalué de 22 % par défaut), TV Bregman (poids et TV
   anisotrope) et bilatéral (noyau spatial plus large). Ces gains se
   généralisent : ils sont même plus forts en évaluation qu'au réglage. Ce
-  sont des candidats au **recalibrage des valeurs par défaut** (§8 de la
+  sont des candidats au **recalibrage des valeurs par défaut** (§10 de la
   référence technique), à confirmer sur d'autres images.
 - **Sur-apprentissage de `nl_means`** : la fenêtre de recherche réduite à
   ±3 px gagne 0,5 dB sur la moitié de réglage mais en perd 0,1 sur
-  l'autre moitié. C'est l'illustration du piège décrit au §5.5 de la
-  référence technique : **toujours valider un réglage sur une autre
+  l'autre moitié. C'est l'illustration du piège décrit au §6 de
+  `OPTIMISATION.md` : **toujours valider un réglage sur une autre
   image que celle qui a servi à l'optimiser.**
 - **Coût** : de quelques secondes (socle) à 4 minutes (EPLL, TGV, BM3D)
   pour 25 évaluations sur 512×256 en CPU. Avec
@@ -179,7 +179,7 @@ lignes : 25 évaluations.
 
 ## 4. Image brute de capteur : bruit poisson-gaussien
 
-Résumé de `REFERENCE_TECHNIQUE.md` §4.5 (`examples/low_light_vst.py`,
+Résumé de `REFERENCE_TECHNIQUE.md` §5.5 (`examples/low_light_vst.py`,
 `astronaut` 256×256, K = 2 e⁻/DN, bruit de lecture 0,5 e⁻). PSNR (dB) :
 
 | Pic | Méthode | Directe (σ unique estimé) | GAT + inverse exacte | Gain |
@@ -215,7 +215,7 @@ directement est une erreur : la stabilisation de variance gagne 4 à
   sur des photos 8 bits, sont les plus exposés. Refaire ce benchmark sur
   des scènes du capteur visé avant toute décision.
 - **Bruit blanc gaussien à σ connu**, sauf §4. Un σ estimé, un bruit
-  coloré (`REFERENCE_TECHNIQUE.md` §9.1) ou non stationnaire changent la
+  coloré (`REFERENCE_TECHNIQUE.md` §10.1) ou non stationnaire changent la
   donne.
 - **Temps en CPU** sur une seule machine, indicatifs ; sur GPU, les
   réseaux sont 10 à 100 fois plus rapides.

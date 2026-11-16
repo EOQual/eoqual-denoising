@@ -5,7 +5,8 @@ Recherche des paramètres optimaux d'une méthode de débruitage par
 optimisation bayésienne, contre une image de référence.
 
 Sans image fournie, utilise « astronaut » (NASA, domaine public) bruitée
-par un bruit blanc gaussien de σ = ``--test-sigma``.
+par un bruit blanc gaussien de σ = ``--test-sigma`` — en couleur pour une
+méthode couleur (``nl_bayes``).
 
 Sorties dans ``--output-dir`` : journal ``<méthode>_log.csv`` (une ligne
 par évaluation), ``<méthode>_best.json`` (meilleurs paramètres et
@@ -19,6 +20,9 @@ Exemples ::
     python examples/optimize_parameters.py --method drunet --vst-gain 2 --vst-read-noise 1.5 --vst-offset 100 \\
         --reference ref_dn.tif --noisy raw_dn.tif
     python examples/optimize_parameters.py --method nl_means --search-space mon_espace.jsonc
+    # image démosaïquée (Hamilton-Adams, κ_Y = 1,35), couleur, stabilisation avec (a, b) en DN :
+    python examples/optimize_parameters.py --method nl_bayes --reference ref_rgb.tif --noisy demos_rgb.tif \\
+        --vst-gain 2 --vst-read-noise 1.5 --vst-offset 100 --kappa-y 1.35
 """
 from __future__ import annotations
 
@@ -38,11 +42,22 @@ from eoqual.denoising.optimization.plotting import plot_images, plot_optimizatio
 from eoqual.denoising.runner import _resolve
 
 
-def _read(path: Path) -> np.ndarray:
-    img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE | cv2.IMREAD_ANYDEPTH)
+def _read(path: Path, color: bool) -> np.ndarray:
+    """Lit une image ; couleur (RGB) si ``color`` et si le fichier a 3 canaux, sinon niveaux de gris."""
+    img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED | cv2.IMREAD_ANYDEPTH)
     if img is None:
         raise SystemExit(f"Impossible de lire {path}")
+    if img.ndim == 3:
+        img = img[..., :3]
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if color else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return img.astype(np.float64)
+
+
+def _write(path: Path, img: np.ndarray) -> None:
+    out = img.astype(np.float32)
+    if out.ndim == 3:
+        out = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(str(path), out)
 
 
 def main() -> int:
@@ -61,19 +76,29 @@ def main() -> int:
     p.add_argument("--vst-gain", type=float, default=None, help="gain K (e⁻/DN) : active la GAT")
     p.add_argument("--vst-read-noise", type=float, default=0.0, help="bruit de lecture (DN)")
     p.add_argument("--vst-offset", type=float, default=0.0, help="niveau d'obscurité (DN)")
+    p.add_argument("--sigma-scale0", type=float, default=None, help="point de départ de sigma_scale")
+    p.add_argument("--kappa-y", type=float, default=None,
+                   help="image démosaïquée : κ_Y du démosaïqueur ; départ sigma_scale = √κ_Y + 0.2")
     p.add_argument("--output-dir", type=Path, default=Path("output_optim"))
     p.add_argument("--no-plot", action="store_true")
     args = p.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    from eoqual.denoising.config import COLOR_METHODS
+
+    color = args.method in COLOR_METHODS
     if args.reference and args.noisy:
-        reference, noisy = _read(args.reference), _read(args.noisy)
+        reference, noisy = _read(args.reference, color), _read(args.noisy, color)
     elif args.reference or args.noisy:
         raise SystemExit("--reference et --noisy vont ensemble.")
     else:
-        reference = d.astronaut_gray(256)
+        reference = d.astronaut_rgb(256) if color else d.astronaut_gray(256)
         noisy = d.add_gaussian_noise(reference, args.test_sigma, seed=0)
+    sigma_scale0 = args.sigma_scale0
+    if args.kappa_y is not None:
+        sigma_scale0 = float(np.sqrt(args.kappa_y) + 0.2)
+        print(f"image démosaïquée : départ sigma_scale = √{args.kappa_y:g} + 0.2 = {sigma_scale0:.3f}")
 
     vst = None
     if args.vst_gain is not None:
@@ -98,6 +123,7 @@ def main() -> int:
         n_jobs=args.n_jobs,
         metric=args.metric,
         vst=vst,
+        sigma_scale0=sigma_scale0,
         log_csv=log_csv,
     )
     elapsed = time.perf_counter() - t0
@@ -115,7 +141,7 @@ def main() -> int:
         )
     else:
         denoised = func(noisy, **res.best_kwargs)
-    cv2.imwrite(str(out / f"{args.method}_denoised.tif"), denoised.astype(np.float32))
+    _write(out / f"{args.method}_denoised.tif", denoised)
     (out / f"{args.method}_best.json").write_text(
         json.dumps(
             {

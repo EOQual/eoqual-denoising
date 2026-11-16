@@ -300,3 +300,58 @@ def test_declared_and_user_constraints_are_both_applied(pair):
         space_constraint=lambda p: p[1] <= 9,  # patch_size ≤ 9
     )
     assert all(h["patch_distance"] >= h["patch_size"] and h["patch_size"] <= 9 for h in res.history)
+
+
+# --- Images couleur et point de départ de sigma_scale ---------------------------
+
+
+@needs_skopt
+@pytest.mark.parametrize("metric", ["psnr", "ssim"])
+def test_color_optimization_nl_bayes(rgb_pair, metric):
+    clean_rgb, noisy_rgb = rgb_pair
+    space = {
+        "search_space": [{"name": "sigma_scale", "type": "float", "low": 0.6, "high": 1.6}],
+        "initial_guess": {"sigma_scale": 1.0},
+    }
+    res = optimize_parameters(noisy_rgb, clean_rgb, "nl_bayes", sigma=SIGMA, search_space=space,
+                              n_calls=5, n_initial_points=3, metric=metric)
+    assert res.best_score >= res.initial_score
+    out = _resolve("nl_bayes")(noisy_rgb, **res.best_kwargs)
+    assert out.shape == noisy_rgb.shape
+
+
+def test_color_image_rejected_for_gray_method(rgb_pair):
+    clean_rgb, noisy_rgb = rgb_pair
+    with pytest.raises(ValueError, match="couleur"):
+        optimize_parameters(noisy_rgb, clean_rgb, "nl_means", sigma=SIGMA, n_calls=3)
+
+
+def test_sigma_scale0_sets_start_and_widens_bounds():
+    from eoqual.denoising.optimization.optimizer import _with_sigma_scale0
+
+    space = _with_sigma_scale0(get_search_space("nl_bayes"), 1.8, "nl_bayes")
+    dim = next(d for d in space["search_space"] if d["name"] == "sigma_scale")
+    assert space["initial_guess"]["sigma_scale"] == 1.8
+    assert dim["low"] <= 0.7 * 1.8 and dim["high"] >= 1.4 * 1.8
+    with pytest.raises(ValueError, match="sigma_scale"):
+        _with_sigma_scale0(get_search_space("tv_chambolle"), 1.2, "tv_chambolle")
+
+
+@needs_skopt
+def test_demosaicked_chain_vst_color_with_kappa_start(rgb_pair):
+    """Chaîne du §6 : couleur + stabilisation (a, b) + départ C = √κ_Y + 0,2."""
+    from eoqual.denoising.vst import add_poisson_gaussian_noise
+
+    clean_rgb, _ = rgb_pair
+    signal = clean_rgb * 50.0
+    raw = add_poisson_gaussian_noise(signal, 2.0, 0.5, 100.0, seed=0)
+    c0 = float(np.sqrt(1.35) + 0.2)
+    res = optimize_parameters(
+        raw, signal / 2.0 + 100.0, "nl_bayes",
+        search_space={"search_space": [{"name": "sigma_scale", "type": "float", "low": 0.8, "high": 2.0}],
+                      "initial_guess": {"sigma_scale": 1.0}},
+        vst={"gain": 2.0, "read_noise_dn": 0.5, "offset_dn": 100.0},
+        sigma_scale0=c0, n_calls=5, n_initial_points=3,
+    )
+    assert res.history[0]["sigma_scale"] == pytest.approx(c0)
+    assert res.best_kwargs["sigma"] == pytest.approx(res.best_params["sigma_scale"])

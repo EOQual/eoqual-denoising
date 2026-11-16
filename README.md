@@ -8,7 +8,10 @@ Collection de méthodes de débruitage d'images, pensée pour l'observation
 de la Terre, avec stabilisation de variance pour le bruit
 poisson-gaussien des images brutes de capteur. Voir **[REFERENCE_TECHNIQUE.md](REFERENCE_TECHNIQUE.md)**
 pour le détail de chaque méthode (principe, implémentation, limites,
-performances indicatives), **[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)**
+performances indicatives) et pour le rôle du niveau de bruit σ,
+**[OPTIMISATION.md](OPTIMISATION.md)** pour le réglage des paramètres
+(dont σ et le modèle de bruit) sur une image de référence,
+**[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)**
 pour l'audit complet des licences,
 **[BIBLIOGRAPHY.md](BIBLIOGRAPHY.md)** pour les publications de
 référence, et **[BENCHMARK.md](BENCHMARK.md)** pour la comparaison
@@ -119,7 +122,7 @@ le σ du capteur laisse des taches colorées, et estimer σ sur l'image
 démosaïquée en trouve la moitié. Recette (stabilisation avec le modèle
 de bruit du capteur ``var = a + b·L``, puis NL-Bayes couleur avec
 ``σ = √κ_Y + 0.2`` selon le démosaïqueur) : voir
-[REFERENCE_TECHNIQUE.md §10](REFERENCE_TECHNIQUE.md#10-cas-particulier--débruiter-une-image-démosaïquée),
+[REFERENCE_TECHNIQUE.md §6](REFERENCE_TECHNIQUE.md#6-cas-particulier--débruiter-une-image-démosaïquée),
 et la référence technique d'eoqual-demosaicing, chapitre 11.
 
 ### Optimiser les paramètres sur une image de référence
@@ -136,11 +139,11 @@ Optimisation bayésienne (scikit-optimize), séquentielle ou parallèle,
 avec journal CSV et figures de diagnostic. Elle fonctionne aussi en
 chaîne GAT pour une image brute (`vst=`). En ligne de commande :
 `examples/optimize_parameters.py`. Voir
-[REFERENCE_TECHNIQUE.md §5](REFERENCE_TECHNIQUE.md#5-optimisation-des-paramètres).
+[OPTIMISATION.md](OPTIMISATION.md).
 
 À faible flux, le gain sur l'application directe d'un débruiteur
 gaussien atteint +2 à +10 dB (voir
-[REFERENCE_TECHNIQUE.md §4](REFERENCE_TECHNIQUE.md#4-bruit-poisson-gaussien--stabilisation-de-variance)).
+[REFERENCE_TECHNIQUE.md §5](REFERENCE_TECHNIQUE.md#5-bruit-poisson-gaussien--stabilisation-de-variance)).
 
 `sigma` est l'écart-type du bruit **dans les unités de l'image** (comptes
 numériques, réflectance...). S'il est omis, il est estimé sur l'image.

@@ -130,7 +130,10 @@ def plot_images(
     lo, hi = float(reference.min()), float(reference.max())
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.6))
     for ax, (name, img) in zip(axes, (("référence", reference), ("bruitée", noisy), ("débruitée", denoised))):
-        ax.imshow(img, cmap="gray", vmin=lo, vmax=hi)
+        if img.ndim == 3:  # couleur : normalisation commune vers [0, 1]
+            ax.imshow(np.clip((img - lo) / ((hi - lo) or 1.0), 0, 1))
+        else:
+            ax.imshow(img, cmap="gray", vmin=lo, vmax=hi)
         ax.set_title(name)
         ax.axis("off")
     if title:

@@ -144,3 +144,7 @@ METHODS_CONFIGS: OrderedDict = OrderedDict(
         },
     }
 )
+
+#: Méthodes qui acceptent une image couleur (H, W, 3) en plus d'une image
+#: 2D. Les autres traitent une seule bande.
+COLOR_METHODS: frozenset = frozenset({"nl_bayes"})

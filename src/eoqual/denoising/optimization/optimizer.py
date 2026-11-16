@@ -108,13 +108,39 @@ def _to_kwargs(params: dict, dims: list[dict], sigma: float) -> dict:
 
 
 def _score(reference, image, metric, data_range) -> float:
+    """PSNR sur tous les pixels (et canaux) ; SSIM moyenné sur les canaux en couleur."""
     if metric == "psnr":
         from skimage.metrics import peak_signal_noise_ratio
 
         return float(peak_signal_noise_ratio(reference, image, data_range=data_range))
     from skimage.metrics import structural_similarity
 
-    return float(structural_similarity(reference, image, data_range=data_range))
+    channel_axis = -1 if reference.ndim == 3 else None
+    return float(structural_similarity(reference, image, data_range=data_range, channel_axis=channel_axis))
+
+
+def _check_input(image, method: str, name: str) -> np.ndarray:
+    """Image 2D, ou (H, W, 3) pour une méthode couleur ; valeurs finies."""
+    from ..config import COLOR_METHODS
+
+    arr = np.asarray(image, dtype=np.float64)
+    if arr.ndim == 3 and arr.shape[-1] == 3 and method in COLOR_METHODS:
+        if not np.all(np.isfinite(arr)):
+            raise ValueError(f"{name} : valeurs non finies (NaN/inf).")
+        return arr
+    if arr.ndim == 3:
+        raise ValueError(
+            f"{name} : image couleur {arr.shape} non acceptée par '{method}' "
+            f"(méthodes couleur : {sorted(COLOR_METHODS)})."
+        )
+    return check_image(arr)
+
+
+def _initial_sigma(noisy: np.ndarray, sigma: float | None) -> float:
+    """σ fourni, sinon estimé (moyenne des canaux pour une image couleur)."""
+    if sigma is not None or noisy.ndim == 2:
+        return resolve_sigma(noisy if noisy.ndim == 2 else noisy[..., 0], sigma)
+    return float(np.mean([resolve_sigma(noisy[..., c], None) for c in range(noisy.shape[-1])]))
 
 
 def _denoise_with(ctx: dict, params: dict) -> np.ndarray:
@@ -226,6 +252,28 @@ class OptimizationResult:
         return None if self.initial_score is None else self.best_score - self.initial_score
 
 
+def _with_sigma_scale0(space: dict, s0: float, method: str) -> dict:
+    """
+    Copie de l'espace où le point de départ de ``sigma_scale`` vaut ``s0``
+    (ex. C = √κ_Y + 0.2 pour une image démosaïquée, voir
+    OPTIMISATION.md §2.4). Les bornes sont élargies si besoin pour
+    contenir [0,7·s0 ; 1,4·s0].
+    """
+    import copy
+
+    space = copy.deepcopy(space)
+    dim = next((d for d in space["search_space"] if d["name"] == "sigma_scale"), None)
+    if dim is None:
+        raise ValueError(f"sigma_scale0 : l'espace de '{method}' n'a pas de dimension sigma_scale.")
+    if s0 <= 0:
+        raise ValueError(f"sigma_scale0 doit être > 0, reçu {s0}.")
+    dim["low"] = min(dim["low"], round(0.7 * s0, 3))
+    dim["high"] = max(dim["high"], round(1.4 * s0, 3))
+    if space.get("initial_guess"):
+        space["initial_guess"]["sigma_scale"] = s0
+    return validate_search_space(space, method)
+
+
 def default_n_jobs(threads_per_job: int = 1) -> int:
     """Nombre d'évaluations parallèles sans sursouscrire les cœurs : cœurs // fils par évaluation."""
     return max(1, (os.cpu_count() or 1) // max(1, threads_per_job))
@@ -260,6 +308,7 @@ def optimize_parameters(
     data_range: float | None = None,
     fixed: dict | None = None,
     vst: dict | None = None,
+    sigma_scale0: float | None = None,
     space_constraint: Callable[[list], bool] | None = None,
     log_csv: str | os.PathLike | None = None,
 ) -> OptimizationResult:
@@ -270,7 +319,8 @@ def optimize_parameters(
     Parameters
     ----------
     noisy : np.ndarray
-        Image bruitée 2D (unités quelconques ; en DN si ``vst`` est fourni).
+        Image bruitée 2D, ou (H, W, 3) pour une méthode couleur
+        (``nl_bayes``). Unités quelconques ; en DN si ``vst`` est fourni.
     reference : np.ndarray
         Image de référence (propre), même forme et mêmes unités.
     method : str
@@ -312,6 +362,10 @@ def optimize_parameters(
         Optimiser la chaîne GAT + méthode + inverse (bruit
         poisson-gaussien) : ``{"gain": ..., "read_noise_dn": ...,
         "offset_dn": ..., "inverse": "exact_unbiased"}``.
+    sigma_scale0 : float, optional
+        Point de départ de la dimension ``sigma_scale`` (bornes élargies si
+        besoin à [0,7 ; 1,4] × cette valeur). Cas type : image démosaïquée,
+        ``sigma_scale0 = √κ_Y + 0.2`` (OPTIMISATION.md §2).
     space_constraint : callable, optional
         Contrainte sur les points tirés : reçoit une liste de valeurs (ordre
         des dimensions) et renvoie ``True`` si le point est valide. Les
@@ -344,15 +398,17 @@ def optimize_parameters(
         raise ValueError(f"metric doit valoir {METRICS}, reçu '{metric}'.")
     if n_jobs < 1:
         raise ValueError(f"n_jobs doit être ≥ 1, reçu {n_jobs}.")
-    noisy = check_image(noisy)
-    reference = check_image(reference)
+    noisy = _check_input(noisy, method, "image bruitée")
+    reference = _check_input(reference, method, "référence")
     if noisy.shape != reference.shape:
         raise ValueError(f"Formes différentes : bruitée {noisy.shape}, référence {reference.shape}.")
 
     space = validate_search_space(search_space or get_search_space(method), method)
+    if sigma_scale0 is not None:
+        space = _with_sigma_scale0(space, float(sigma_scale0), method)
     dims = space["search_space"]
     names = [d["name"] for d in dims]
-    sigma_val = 1.0 if vst else resolve_sigma(noisy, sigma)
+    sigma_val = 1.0 if vst else _initial_sigma(noisy, sigma)
     if data_range is None:
         data_range = float(reference.max() - reference.min()) or 1.0
     guess = space.get("initial_guess") or {}

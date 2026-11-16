@@ -15,9 +15,15 @@ indépendant d'un pixel à l'autre et de même variance partout. Deux
 écarts fréquents à ce modèle sont traités à part :
 
 - **bruit poisson-gaussien** des images brutes de capteur (variance qui
-  croît avec le signal) : stabilisation de variance, §4 ;
-- **bruit coloré** (corrélé entre pixels voisins) : non traité, voir
-  §9.1.
+  croît avec le signal) : stabilisation de variance, §5 ;
+- **bruit d'une image démosaïquée** (corrélé et amplifié par
+  l'interpolation des couleurs) : §6 ;
+- **bruit coloré** en général (corrélé entre pixels voisins) : non
+  traité, voir §10.1.
+
+Le rôle de σ dans le calcul, son origine, son devenir dans ces deux cas
+et le principe de son réglage sont rassemblés au §4 ; le réglage
+lui-même, comme celui de tous les paramètres, est dans `OPTIMISATION.md`.
 
 ### 1.2 Les méthodes
 
@@ -44,9 +50,12 @@ indépendant d'un pixel à l'autre et de même variance partout. Deux
 Le §2 regroupe les méthodes installées par défaut (le « socle »), le §3
 celles qui demandent un extra pip ou un composant externe. Chaque
 section décrit le principe, puis l'implémentation, les paramètres et les
-limites. L'utilisation commune à toutes les méthodes (appel, unités,
-conventions) est décrite au §6, et les performances comparées dans
-`BENCHMARK.md`.
+limites. Le §4 traite du niveau de bruit σ, commun à toutes ; les §5
+et §6 des deux cas où le bruit sort du modèle. L'optimisation des
+paramètres fait l'objet d'un document séparé, `OPTIMISATION.md`.
+L'utilisation commune à toutes les méthodes (appel,
+unités, conventions) est décrite au §7, et les performances comparées
+dans `BENCHMARK.md`.
 
 ## 2. Méthodes du socle
 
@@ -187,7 +196,8 @@ Les estimées sont agrégées sans pondération.
 #### Les paramètres, leurs imbrications et leurs domaines de recherche
 
 σ s'entend sur l'échelle [0, 255] (l'image y est ramenée par
-`data_range`).
+`data_range`). Le rôle de σ dans chaque formule, le seuil τ₀ du
+regroupement et le réglage de σ sont détaillés au §4.
 
 | Terme | Rôle | Article (gris) | Domaine de recherche | Effet si trop petit / trop grand |
 |---|---|---|---|---|
@@ -285,7 +295,7 @@ en flottants sur l'échelle [0, 255], sans quantification.
 niveau de BM3D (32,38) et de NL-Ridge. Face à l'exécutable IPOL : à
 égalité sur 256×256 (±0,1 dB), +0,1 à +0,4 dB sur 512×256. Limite : numpy
 sur CPU ; un portage PyTorch (GPU) serait le prochain gain de vitesse
-(§9).
+(§10).
 
 ### 2.7 `nl_ridge` — NL-Ridge, réimplémentation MIT
 
@@ -325,7 +335,7 @@ NL-Bayes (N > k²) ; ses patchs sont donc grands et ses groupes petits.
 Un réglage avec k₁ ≥ p₁² est refusé (`ValueError`) : la matrice serait
 singulière et le résultat inutilisable (1,6 dB mesurés à p₁ = 5,
 k₁ = 30). L'espace de recherche porte la contrainte correspondante
-(§5.2).
+(`OPTIMISATION.md` §3).
 
 **Validation** : reproduit le code des auteurs à 0,03 dB près sur
 astronaut 256×256 (29,35 contre 29,34 dB à σ = 0,1), en temps comparable
@@ -390,7 +400,7 @@ n'utilise pas σ (le paramètre est accepté mais ignoré).
 **Limites** : hors de son domaine d'entraînement (bruit normalisé
 supérieur à 50/255), il échoue nettement, faute de pouvoir être informé
 du niveau de bruit : à faible flux, même après stabilisation de variance
-(§4), il perd 5 à 8,5 dB face à DRUNet. Ne l'utiliser que dans son domaine
+(§5), il perd 5 à 8,5 dB face à DRUNet. Ne l'utiliser que dans son domaine
 (σ ≤ 0,2 en dynamique [0, 1]).
 
 ### 3.4 `gsdrunet` — GS-DRUNet (extra `deep`)
@@ -492,7 +502,7 @@ couverte par un brevet (§3 du même document).
 
 **Limites** : la version 4.x accepte aussi un bruit coloré (densité
 spectrale `sigma_psd` 2D). Ce cas n'est pas encore exposé par la couche
-d'appel (bruit blanc uniquement) — voir §9.1.
+d'appel (bruit blanc uniquement) — voir §10.1.
 
 ### 3.9 `nl_ridge_inria` — NL-Ridge, code des auteurs (composant externe, **AGPL-3.0**)
 
@@ -516,7 +526,7 @@ mot-clé pour les remplacer.
 
 **Limites** : voir l'avertissement AGPL dans `THIRD_PARTY_LICENSES.md`
 §2.3. Les modèles de bruit Poisson et Poisson-gaussien du code amont ne
-sont pas exposés : passer par `vst_denoise` (§4), commun à toutes les
+sont pas exposés : passer par `vst_denoise` (§5), commun à toutes les
 méthodes.
 
 ### 3.10 `nl_bayes_ipol` — NL-Bayes, exécutable IPOL (externe, **GPL-3.0+**)
@@ -567,14 +577,226 @@ réglables en ligne de commande, d'où un PSNR un peu inférieur à
 `nl_bayes`, qui applique en plus les patchs de 5 recommandés pour les
 niveaux de gris.
 
-## 4. Bruit poisson-gaussien : stabilisation de variance
+## 4. Le niveau de bruit σ
+
+Ce chapitre rassemble tout ce qui concerne σ : ce qu'il représente, où il
+intervient dans le calcul (en prenant NL-Bayes comme exemple, la méthode
+qui l'utilise le plus), d'où vient sa valeur, ce qu'il devient avec la
+stabilisation de variance et après un démosaïçage, et comment le régler
+par optimisation. Les autres méthodes l'utilisent de façon plus simple
+(un seuil ou un poids proportionnel à σ, §2-3).
+
+### 4.1 Ce que σ représente
+
+Toutes les méthodes du catalogue supposent l'image bruitée de la forme :
+
+```
+y = x + n          n : bruit blanc gaussien, d'écart-type σ
+```
+
+- **blanc** : le bruit d'un pixel est indépendant de celui de ses voisins ;
+- **stationnaire** : σ est le même partout dans l'image.
+
+σ est donc **une seule valeur pour toute l'image**, et toute la difficulté
+d'un débruiteur est de doser son effet par rapport à elle : trop fort, il
+efface des détails ; trop faible, il laisse du bruit.
+
+Deux cas réels sortent de ce modèle et sont traités à part :
+
+| Cas | Pourquoi le modèle ne tient pas | Traitement |
+|---|---|---|
+| Image brute de capteur | la variance du bruit croît avec la luminance (bruit photonique) | stabilisation de variance (§4.4, §5) |
+| Image démosaïquée | le bruit est corrélé entre pixels et entre canaux, et amplifié en luminance | facteur C (§4.5, §6) |
+
+### 4.2 Où σ intervient dans NL-Bayes
+
+**Notations.** Un groupe est un ensemble de patchs (carrés de k×k pixels)
+jugés semblables ; chaque patch est vu comme un vecteur de k² valeurs.
+
+| Symbole | Signification |
+|---|---|
+| `σ` | écart-type du bruit, sur l'échelle 0-255 (§4.3) |
+| `Q̃` | un patch bruité du groupe |
+| `Q` | son estimation débruitée |
+| `P̄` | moyenne des patchs bruités du groupe |
+| `C` | covariance des patchs bruités du groupe (matrice k² × k²) |
+| `C_b` | même covariance, calculée sur l'image issue de l'étape 1 |
+| `I` | matrice identité k² × k² |
+| `β₁`, `β₂` | coefficients d'atténuation (article : 1,0 et 1,2) |
+| `γ` | seuil des zones homogènes (article : 1,05) |
+| `d` | distance entre deux patchs : moyenne, sur les k² pixels, du carré de leur différence |
+| `τ`, `τ₀`, `d_N` | seuils de regroupement de l'étape 2 (ci-dessous) |
+
+**1. Filtre de l'étape 1 (estimateur bayésien) :**
+
+```
+Q = P̄ + (C − β₁·σ²·I) · C⁻¹ · (Q̃ − P̄)
+```
+
+Un bruit blanc ajoute exactement `σ²·I` à la covariance d'un groupe :
+`C − σ²·I` est donc la covariance du **signal seul**. Dans les directions
+où la variance du groupe ne dépasse pas celle du bruit, le filtre
+supprime la composante ; là où elle la dépasse nettement (une vraie
+structure), il la conserve.
+
+**2. Filtre de l'étape 2 (Wiener) :**
+
+```
+Q = P̄ + C_b · (C_b + β₂·σ²·I)⁻¹ · (Q̃ − P̄)
+```
+
+`C_b`, mesurée sur l'image déjà débruitée, joue le rôle du signal propre ;
+`σ²` celui du bruit. Leur rapport fixe l'atténuation direction par
+direction.
+
+**3. Critère des zones homogènes (les deux étapes) :**
+
+```
+si  écart-type de tous les pixels du groupe ≤ γ·σ   alors   Q = moyenne du groupe
+```
+
+Une dispersion qui ne dépasse pas celle du bruit signale une zone plate :
+tous les patchs du groupe prennent la valeur moyenne.
+
+**4. Choix des paramètres.** σ sélectionne les paliers de l'article (§2.6) :
+la taille des patchs k₁ et k₂ (donc N et la fenêtre de recherche) augmente
+à σ = 20 (couleur), 50 et 70 ; β₂ passe de 1,2 à 1,0 à σ = 50.
+
+**5. Le regroupement : τ et τ₀ (étape 2 seulement).** À l'étape 2, pour un
+patch de référence, NL-Bayes calcule la distance `d` à tous les patchs de
+la fenêtre de recherche, **sur l'image issue de l'étape 1**, puis :
+
+```
+d_N = distance du N-ième patch le plus proche
+τ   = max(τ₀, d_N)
+groupe = tous les patchs à distance ≤ τ
+```
+
+Sans τ₀, le groupe compte toujours N patchs. τ₀ est un **plancher de
+ressemblance** : dans une zone plate, beaucoup plus de N patchs sont
+presque identiques, et τ₀ permet de tous les prendre (moyenne meilleure).
+À l'étape 1, le groupe compte toujours exactement N patchs (pas de τ).
+
+**Ce qui ne dépend pas de σ.** La distance `d` elle-même, et τ₀, fixé par
+l'article à 4 niveaux² sur l'échelle 0-255 (≈ 2 niveaux d'écart moyen).
+τ₀ est donc un seuil **absolu** : son effet relatif change avec le niveau
+de bruit et avec l'échelle (§4.3). Pour repère, deux patchs bruités d'un
+même signal sont à une distance moyenne de 2σ² ; mais à l'étape 2, les
+distances se mesurent sur l'image déjà débruitée, dont le bruit résiduel
+est bien plus faible que σ.
+
+### 4.3 D'où vient la valeur de σ
+
+1. **Valeur d'entrée** : `sigma=…`, dans les **unités de l'image** (DN,
+   réflectance...).
+2. **Sinon, estimation** par `estimate_noise_sigma` (estimateur MAD de
+   Donoho & Johnstone, sous-bande d'ondelettes la plus fine) ; en couleur,
+   moyenne des trois canaux. Deux pièges : il **surestime** σ sur une
+   image très texturée, et il **trouve la moitié** du vrai σ sur une image
+   démosaïquée (§6.6). Fournir σ dès qu'il est connu (caractérisation du
+   capteur).
+3. **Facteur `sigma_scale`** (optimisation seulement) : multiplie σ avant
+   tout le reste.
+4. **Conversion sur l'échelle 0-255**, avec l'image, via `data_range`
+   (par défaut le min/max de l'image). Ce n'est pas un reste du codage
+   8 bits — le calcul se fait en flottants, une image 12 bits ne perd
+   rien — mais le moyen d'appliquer les seuils de l'article (paliers de
+   σ, τ₀), exprimés sur cette échelle. Les filtres 1 à 3 du §4.2, eux,
+   donnent le même résultat quelle que soit l'échelle.
+   Conséquence : ce que l'article appelle « σ = 20 » est en réalité
+   « σ = 20/255 de la dynamique ». Avec le min/max par défaut, une image
+   peu contrastée voit son σ relatif gonflé ; pour une série d'images,
+   fixer `data_range` à la dynamique du capteur (ex. `(0, 4095)`).
+5. **Le même σ sert aux deux étapes.** C'est correct : les filtres
+   s'appliquent toujours aux patchs bruités d'origine `Q̃`, dont le bruit
+   vaut σ ; l'image de l'étape 1 ne sert qu'à former de meilleurs groupes
+   et à estimer `C_b`.
+6. **Couleur** : un seul σ, supposé identique sur les trois canaux. La
+   transformée Y₀U₀V₀ étant orthonormée, il est conservé sur chaque canal
+   transformé.
+
+### 4.4 Bruit qui dépend de la luminance : modèle (a, b) et stabilisation
+
+Sur une image brute de capteur, la **variance** du bruit suit la
+luminance L (niveau d'obscurité soustrait) :
+
+```
+var(L) = a + b·L        a : plancher (bruit de lecture²)        b : pente (bruit photonique, 1/gain)
+```
+
+Les coefficients `a` et `b` se mesurent : courbe de transfert photonique
+(PTC d'eoqual-measure) ou recette en vol. Le bruit est faible dans les
+zones sombres et fort dans les zones claires : un σ unique ne peut pas
+convenir partout.
+
+La **stabilisation de variance** (§5) applique à l'image une fonction
+construite à partir de (a, b), qui ramène ce bruit variable à un bruit
+d'écart-type **1 partout**. NL-Bayes reçoit alors `σ = 1` :
+
+- le modèle (a, b) a été pris en compte **en amont**, par la
+  transformée, puis par son inverse exacte au retour ;
+- les filtres du §4.2 tournent avec σ = 1 : c'est le même calcul, avec
+  une valeur connue d'avance ;
+- σ = 1 est exprimé dans les unités de l'image transformée, puis converti
+  sur l'échelle 0-255 avec **la dynamique de l'image transformée**, qui
+  dépend du flux (environ 2·√(signal crête en électrons)). Pour 100 e⁻ en
+  crête : dynamique ≈ 20, σ ≈ 255/20 ≈ 13 sur l'échelle de l'article. Le
+  palier de patchs suit donc le niveau de signal, ce qui est le
+  comportement voulu.
+
+| Situation | Stabilisation | Effet mesuré (§5.5) |
+|---|---|---|
+| Image brute, bruit photonique dominant | **oui** | +4 à +10 dB |
+| Bruit de lecture dominant | inutile | ±0,2 dB |
+| Bruit déjà stationnaire (simulé, quantification) | non | — |
+| Image recalibrée ou rééchantillonnée | à éviter | le modèle (a, b) ne tient plus |
+
+### 4.5 Image démosaïquée : le facteur C
+
+Le démosaïçage interpole chaque couleur à partir des photosites voisins.
+Le bruit devient corrélé et sa variance en luminance est multipliée par un
+facteur κ_Y propre au démosaïqueur (0,6 à 2,6, §6.3), la forme affine
+étant conservée : `var_Y(L) ≈ κ_Y · (a + b·L)`. La recette (§6.4) :
+
+1. stabiliser avec les (a, b) **du capteur**, inchangés ;
+2. débruiter avec **σ = C** au lieu de 1, `C = √κ_Y + 0,2` (√κ_Y pour la
+   luminance, +0,2 pour la chrominance basse fréquence) ;
+3. inverser la stabilisation.
+
+Augmenter a et b pour tenir compte du démosaïçage revient presque au même
+pour le débruitage, mais **fausse l'inverse exacte** au retour (§6.5) : le
+facteur se met sur σ, dans le domaine stabilisé, pas sur (a, b).
+
+### 4.6 Régler σ
+
+σ, comme les autres paramètres, peut se régler par optimisation sur une
+image de référence. Le principe : **fixer ce qui se mesure** ((a, b),
+l'offset : propriétés du capteur), **optimiser ce qui s'ajuste**
+(`sigma_scale`, qui multiplie σ dans le domaine où travaille la méthode ;
+c'est le facteur C après démosaïçage, à partir de √κ_Y + 0,2). Détail,
+cas par cas, avec bornes, budget et exemple : `OPTIMISATION.md` §2.
+
+## 5. Bruit poisson-gaussien : stabilisation de variance
 
 **Fichier** : `vst.py` — implémentation originale (numpy, scipy), écrite
 depuis les publications, sans code tiers.
 **Références** : Anscombe (1948) ; GAT, Murtagh, Starck & Bijaoui
 (1995) ; inverses optimales, Mäkitalo & Foi (2011, 2013).
 
-### 4.1 Modèle
+**Le terme VST.** VST signifie *variance-stabilizing transform*,
+« transformée stabilisatrice de variance ». C'est le nom d'une famille de
+méthodes statistiques : une fonction f est choisie pour que la variance
+de f(y) ne dépende plus de la moyenne de y. La transformée d'Anscombe
+(1948) est la VST classique de la loi de Poisson ; la transformée
+d'Anscombe généralisée (GAT, Murtagh et al. 1995) l'étend au bruit
+poisson-gaussien. D'autres VST existent (Freeman-Tukey, transformée de
+Fisz). La fonction s'appelle `vst_denoise` d'après le principe
+(stabiliser, débruiter, inverser), qui ne dépend pas de la transformée
+choisie. Ce module n'implémente que la GAT, et les fonctions de bas
+niveau portent son nom (`generalized_anscombe`,
+`inverse_generalized_anscombe`).
+
+### 5.1 Modèle
 
 Une image brute de capteur suit, pixel par pixel :
 
@@ -595,7 +817,7 @@ Un débruiteur gaussien appliqué tel quel reçoit un σ unique (estimé ou
 fourni) alors que le vrai σ varie dans l'image. Il sur-lisse les zones
 sombres et sous-lisse les zones claires, ou l'inverse.
 
-### 4.2 Transformée directe (GAT)
+### 5.2 Transformée directe (GAT)
 
 En électrons, y = K·(z − offset), et avec σ = K·σ_DN :
 
@@ -606,7 +828,7 @@ Après f, la variance du bruit vaut ≈ 1 **quel que soit λ**, dès quelques
 (`gain=1`, `read_noise_dn=0`) redonne l'Anscombe classique,
 2·sqrt(z + 3/8).
 
-### 4.3 Inverses
+### 5.3 Inverses
 
 Le débruiteur estime E[f(y)], pas f(E[y]). Comme f est concave, les deux
 diffèrent et l'inverse « naïve » est biaisée. Trois inverses sont
@@ -635,7 +857,7 @@ moyenne empirique de f(y) retrouve λ à moins de 2,1 incertitudes-types.
 `tests/test_vst.py`, avec une tolérance de 5 incertitudes-types,
 stable sur les graines 0 à 8 (`EOQUAL_TEST_SEED`).
 
-### 4.4 Usage
+### 5.4 Usage
 
 ```python
 import eoqual.denoising as d
@@ -648,7 +870,7 @@ séparément : `generalized_anscombe`, `inverse_generalized_anscombe`,
 `expected_gat`, `add_poisson_gaussian_noise` (simulateur du même
 modèle).
 
-### 4.5 Résultats (`examples/low_light_vst.py`)
+### 5.5 Résultats (`examples/low_light_vst.py`)
 
 `astronaut` 256×256 ramenée à un flux crête donné, K = 2 e⁻/DN, offset
 100 DN. PSNR en dB, référence = signal moyen en DN.
@@ -696,167 +918,157 @@ et la non-linéarité ne sont pas modélisées. L'estimation de K et σ_DN
 sur une seule image (sans PTC) n'est pas fournie ; utiliser la PTC
 d'eoqual-measure.
 
-## 5. Optimisation des paramètres
+## 6. Cas particulier : débruiter une image démosaïquée
 
-**Fichiers** : `optimization/` (`optimizer.py`, `search_spaces.py`,
-`plotting.py`, `jsonc.py`) ; script `examples/optimize_parameters.py`.
-**Extra** : `optim` (scikit-optimize, BSD-3-Clause).
-**Référence** : Shahriari et al. (2016) ; acquisition `gp_hedge`,
-Hoffman, Brochu & de Freitas (2011).
+### 6.1 Quand ce chapitre s'applique
 
-### 5.1 Problème et méthode
+Une image couleur issue d'un capteur à **matrice de filtres colorés**
+(Bayer RGGB ou similaire) a été **démosaïquée** : chaque pixel n'a mesuré
+qu'une couleur, les deux autres ont été interpolées. Le bruit n'est alors
+plus celui du capteur — il est corrélé entre pixels et entre canaux
+(§10.1), et un débruiteur réglé avec le σ du capteur laisse des taches
+colorées. Pour une image en niveaux de gris, une image panchromatique ou
+multispectrale à un capteur par bande, ou une mosaïque brute non
+démosaïquée, ce chapitre ne s'applique pas : §5 (bruit poisson-gaussien)
+et §7 suffisent.
 
-Les réglages par défaut (§2-3) sont calibrés sur une image naturelle. Sur
-une image d'un capteur donné, d'autres valeurs peuvent faire mieux.
-`optimize_parameters` cherche, pour une méthode, les paramètres qui
-maximisent un score (PSNR ou SSIM) entre l'image débruitée et une
-**image de référence** propre (simulation, moyenne de nombreuses
-acquisitions, ou scène de calibration).
+Ce chapitre donne la recette côté débruitage ; la théorie détaillée, la
+mesure pour chaque démosaïqueur et les études sur orthophoto sont dans la
+référence technique d'**eoqual-demosaicing**, chapitre 11.
 
-Chaque évaluation coûte un débruitage complet et la fonction est une
-boîte noire (sans gradient, dimensions entières, réelles et
-catégorielles mêlées). L'optimisation bayésienne limite le nombre
-d'évaluations :
+### 6.2 Modèle de bruit du capteur
 
-1. un **processus gaussien** est ajusté sur les points déjà évalués ; il
-   prédit le score en tout point, avec une incertitude ;
-2. une **fonction d'acquisition** choisit le point suivant, entre
-   exploitation (près des meilleurs points) et exploration (zones
-   incertaines). `gp_hedge` fait concourir Expected Improvement,
-   Probability of Improvement et Lower Confidence Bound, et privilégie
-   celle qui réussit le mieux au fil des itérations ;
-3. le point est évalué, le modèle mis à jour, et ainsi de suite jusqu'à
-   `n_calls` évaluations.
+Pour une luminance linéaire normalisée ``L ∈ [0, 1]`` (niveau d'obscurité
+soustrait) :
 
-Les `n_initial_points` premiers points sont tirés au hasard : le modèle a
-besoin d'observations réparties avant de guider la recherche. Le point de
-départ (`initial_guess` = réglages par défaut) est toujours évalué en
-premier et compte parmi ces points. **L'optimisation ne peut donc pas
-faire moins bien que les défauts sur l'image de réglage.**
-
-### 5.2 Espaces de recherche
-
-Chaque méthode réglable a un espace par défaut (`SEARCH_SPACES`) :
-
-| Méthode | Dimensions optimisées |
-|---|---|
-| `bilateral` | `sigma_color` [0,5 ; 6]·σ, `sigma_space` [0,5 ; 5] px |
-| `nl_means` | `h` [0,2 ; 1,5]·σ, `patch_size` 3-11, `patch_distance` 3-21 |
-| `tv_chambolle` | `weight` [0,1 ; 3]·σ |
-| `tv_bregman` | `weight` [0,1 ; 5]/σ, `isotropic` |
-| `wavelet` | `sigma_scale` [0,5 ; 2], ondelette (6), règle, mode |
-| `drunet`, `gsdrunet`, `epll` | `sigma_scale` [0,5 ; 2] |
-| `swinir` | jeu de poids 15 / 25 / 50 (recherche exhaustive) |
-| `tgv` | `weight` [1 ; 20]·σ |
-| `wavelet_dict` | `threshold` [0,3 ; 4]·σ, `level` 1-5 |
-| `bm3d` | `sigma_scale` [0,5 ; 2], profil (`np`, `refilter`, `vn`, `high`) |
-| `nl_ridge`, `nl_ridge_inria` | `sigma_scale`, `p1`, `p2`, `k1`, `k2`, contraintes (linéaire / affine) |
-| `nl_bayes` | `sigma_scale`, `k1`, `k2` (3/5/7), `window_factor` [3 ; 9], `gamma` [0,9 ; 1,3], `beta1` [0,8 ; 1,2], `beta2` [0,8 ; 1,5], `tau0` [0 ; 16], `use_area1`, `use_area2` (détail §2.6) |
-| `nl_bayes_ipol` | `sigma_scale`, `use_area1`, `use_area2` |
-| `restormer` | aucune (réseau aveugle) |
-
-Deux conventions rendent ces espaces **indépendants des unités de
-l'image** :
-
-- `"scale": "sigma"` (ou `"inverse_sigma"`) : la borne est un multiple
-  de σ (ou de 1/σ). La méthode reçoit `valeur × σ` (ou `valeur / σ`) ;
-- `sigma_scale` multiplie le σ transmis à la méthode. C'est l'unique
-  réglage des méthodes conditionnées par σ, et il compense aussi une
-  estimation de σ biaisée.
-
-**Les espaces par défaut sont des fichiers** :
-`optimization/spaces/<méthode>.jsonc`, un par méthode réglable (16 sur
-17 ; `restormer` n'a aucun paramètre). Chaque dimension y est commentée
-(rôle, valeur de l'article ou calibrée, effet), et `initial_guess` y vaut
-les réglages par défaut de la méthode (sauf `swinir`, dont le jeu de
-poids est choisi automatiquement selon σ). Ces fichiers sont la source
-unique, chargée par `search_spaces.py`. Un autre fichier au même format
-(JSON ou JSONC, commentaires et virgules finales tolérés) se passe par
-`search_space=` ou `--search-space`.
-
-**Contraintes entre dimensions.** Quand deux dimensions sont liées par
-l'algorithme, l'espace déclare une clé `"constraints"` : une liste
-d'expressions, toutes requises, portant sur les valeurs de l'espace
-(avant conversion par `scale`). Exemple de NL-Ridge :
-`"constraints": ["k1 < p1 * p1"]`. Les points invalides sont rejetés au
-tirage, sans évaluation ; le point de départ est vérifié au chargement.
-Grammaire volontairement restreinte, sans évaluation de code : noms de
-dimensions, nombres, `+ - * / // % **`, comparaisons, `and`, `or`,
-`not`, parenthèses (`build_constraint`). Une contrainte supplémentaire
-peut aussi être passée en Python par `space_constraint=` ; les deux se
-cumulent. Un espace entièrement catégoriel et
-plus petit que le budget (ex. `swinir`, 3 points) est évalué
-**exhaustivement**, sans modèle.
-
-### 5.3 Exécution
-
-- **Séquentielle** (`n_jobs=1`) : `skopt.gp_minimize`.
-- **Parallèle** (`n_jobs > 1`) : file d'attente glissante sur un
-  `ProcessPoolExecutor`. Jusqu'à `n_jobs` évaluations tournent en
-  permanence ; chacune est remplacée dès qu'elle se termine (`ask` /
-  `tell` un par un), sans attendre un lot. Les images et paramètres fixes
-  ne sont envoyés qu'une fois par processus (initialiseur du pool).
-  Limite assumée : les points en cours ne sont pas pris en compte par
-  `ask`, ce qui peut produire des points voisins.
-- **Méthodes PyTorch en parallèle** : chaque processus charge son modèle
-  (mémoire × `n_jobs`), et le nombre de fils PyTorch par processus est
-  limité à `cœurs // n_jobs` (`threads_per_job`). Sur GPU, rester à
-  `n_jobs=1`.
-- **Échecs** : une évaluation qui lève une exception, ou renvoie une
-  image de mauvaise forme ou non finie, est pénalisée (objectif 1e10) et
-  journalisée ; l'optimisation continue.
-- **Journal** : `log_csv=` écrit une ligne par évaluation (paramètres,
-  score, statut, durée), avec verrou de fichier sous POSIX.
-- **Bruit poisson-gaussien** : `vst={"gain", "read_noise_dn",
-  "offset_dn"}` optimise la chaîne complète GAT → méthode → inverse
-  exacte (§4), avec σ = 1 dans le domaine transformé.
-
-### 5.4 Usage
-
-```python
-from eoqual.denoising.optimization import optimize_parameters
-res = optimize_parameters(noisy, reference, "bm3d", sigma=12.0, n_calls=25)
-res.best_params      # meilleur point, en multiples de σ (ex. sigma_scale, profile)
-res.best_kwargs      # arguments en unités de l'image, σ compris
-res.gain             # gain sur les défauts, sur l'image de réglage
-clean = d.bm3d_denoise(autre_image, **res.best_kwargs)
+```
+var(L) = a + b · L         a = (σ_r / N_sat)²  (plancher : lecture, obscurité)
+                           b = 1 / N_sat        (pente : bruit photonique)
 ```
 
-En ligne de commande : `python examples/optimize_parameters.py --method
-nl_means --reference ref.tif --noisy bruitee.tif --n-calls 30`. Le script
-écrit le journal CSV, les meilleurs paramètres (JSON), l'image débruitée
-(TIFF float32) et les figures : convergence, projections de l'objectif
-estimé, distribution des points évalués.
+avec ``N_sat`` les électrons à pleine échelle et ``σ_r`` le bruit de
+lecture en électrons. C'est le modèle du §5.1, écrit en luminance
+normalisée (le §5.1 note la même droite ``σ² = a·μ + b`` avec les rôles
+de ``a`` et ``b`` inversés). Correspondance avec les fonctions du §5 :
 
-`res.best_kwargs` s'utilise tel quel avec `denoise(image, méthode,
-**res.best_kwargs)` ou avec la fonction de la méthode
-(`d.<méthode>_denoise`).
+```python
+from eoqual.denoising.vst import generalized_anscombe, inverse_generalized_anscombe
+gain, read_noise = 1.0 / b, a ** 0.5          # var = a + b·L
+g = generalized_anscombe(L, gain, read_noise)  # bruit d'écart-type ≈ 1
+```
 
-### 5.5 Budget et précautions
+### 6.3 Ce que le démosaïçage fait du bruit
 
-- **Budget** : 15 à 30 évaluations pour 1 à 3 dimensions, 50 à 100
-  au-delà de 5 (`nl_ridge`). `n_initial_points` ≈ 20 à 40 % de `n_calls`.
-- **Sur-apprentissage** : le gain mesuré sur l'image de réglage est
-  optimiste. Il faut le **valider sur une autre image** du même capteur
-  (le benchmark sépare réglage et évaluation, voir `BENCHMARK.md`).
-- **Référence** : la référence doit être bien plus propre que l'image à
-  débruiter. Une référence bruitée biaise le réglage vers le sur-lissage.
-- **Score** : le PSNR favorise le lissage des zones homogènes, le SSIM
-  la préservation des structures. Choisir le score selon l'usage aval.
-- **Dépendance** : le dépôt d'origine de scikit-optimize est archivé
-  depuis février 2024 ; les versions 0.10.x (dernière : juin 2024) sont
-  publiées par une fourche peu active. Il n'a pas de successeur officiel.
-  Le remplaçant le plus solide est **Optuna** (MIT, très actif, v5.0 en
-  septembre 2026) : son `GPSampler` fait de l'optimisation bayésienne par
-  processus gaussien (entiers, catégories, contraintes, parallélisme), et
-  son `TPESampler` par défaut est plus robuste en grande dimension.
-  Alternatives : BoTorch / Ax (MIT, Meta, plus lourds, PyTorch), SMAC3
-  (BSD, forêts aléatoires, bon sur les espaces mixtes),
-  `bayesian-optimization` (MIT, dimensions réelles seulement). Le code
-  n'utilise que l'API stable de skopt (`gp_minimize`, `Optimizer`,
-  `space_constraint`) ; la migration vers Optuna est notée au §8.
+Un démosaïqueur calcule chaque canal comme une moyenne pondérée de
+photosites voisins (poids ``w``, ``Σ w = 1``). Le bruit de sortie en est
+la même combinaison : sa variance par canal vaut ``σ²(L)·Σ w²`` (≤ σ²),
+et les poids partagés le **corrèlent** entre pixels et entre canaux. En
+luminance ``Y = (R+G+B)/√3``, des canaux corrélés positivement
+**augmentent** la variance ; en chrominance (différences de canaux), elle
+**diminue**, mais ce qui reste est de basse fréquence. On note ``κ_Y`` le
+rapport des variances de Y après / avant démosaïçage (eoqual-demosaicing
+§11.3, champ uniforme) :
 
-## 6. Utilisation et conventions
+| Démosaïqueur | κ_Y | √κ_Y + 0.2 |
+|---|---|---|
+| `bilinear` | 0.58 | 0.96 |
+| `ari` | 0.62 | 0.99 |
+| `ri`, `mlri` | 0.79 à 0.87 | 1.09 à 1.13 |
+| `ha` (Hamilton-Adams) | 1.35 | 1.36 |
+| `malvar` | 2.05 | 1.63 |
+| `gbtf` | 2.41 | 1.75 |
+| `dlmmse` | 2.58 | 1.80 |
+
+### 6.4 Recette
+
+1. **Démosaïquer** (eoqual-demosaicing), en luminance linéaire.
+2. **Stabiliser** l'image démosaïquée avec ``(a, b)`` du capteur.
+3. **Débruiter avec σ = C**, ``C = √κ_Y + 0.2``, avec un débruiteur
+   **couleur** (`nl_bayes` en mode `"yuv"`).
+4. **Inverser** la stabilisation (inverse exacte non biaisée, §5.3).
+
+```python
+g = generalized_anscombe(rgb, 1.0 / b, a ** 0.5)
+d = nl_bayes_denoise(g, sigma=C, data_range=(g.min(), g.max()))
+rgb_debruitee = inverse_generalized_anscombe(d, 1.0 / b, a ** 0.5)
+```
+
+Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
+bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
+
+Mode opératoire complet sur données réelles (unités de ``(a, b)``,
+valeurs de C à balayer pour Hamilton-Adams et GBTF, critères sans vérité
+terrain) : eoqual-demosaicing, §11.11, exemple
+`examples/real_data_protocol.py` et notebook `examples/demosaicing_noise.ipynb`.
+
+**Pourquoi √κ_Y + 0.2.** NL-Bayes couleur règle son étape principale sur
+le bruit de la luminance, d'écart-type ``√κ_Y`` dans le domaine stabilisé
+(d'où ``√κ_Y``) ; le terme ``+0.2``, empirique, efface le bruit de
+chrominance basse fréquence, que le débruiteur prend sinon pour du signal.
+Validation (19 démosaïqueurs × 3 niveaux de bruit × 4 zones d'une
+orthophoto, eoqual-demosaicing §11.4) — perte moyenne par rapport au
+meilleur C de chaque cas :
+
+| Règle | bruit fort | moyen | faible |
+|---|---|---|---|
+| C = 1 (σ du capteur) | 1.12 dB | 0.47 dB | 0.22 dB |
+| C = 1.5 fixe (Jin et al. 2020) | 0.31 dB | 0.18 dB | 0.15 dB |
+| C = 1.25 fixe | 0.63 dB | 0.20 dB | 0.13 dB |
+| **C = √κ_Y + 0.2** | **0.08 dB** | **0.04 dB** | **0.05 dB** |
+
+(Le facteur fixe 1.5 de Jin, Facciolo & Morel 2020 correspond à un
+démosaïqueur de κ_Y ≈ 1.7 ; il est trop fort pour les méthodes à faible
+κ_Y et trop faible pour GBTF ou DLMMSE.)
+
+### 6.5 Régler C
+
+Avec une image de référence, C se règle par optimisation (dimension
+`sigma_scale` dans le domaine stabilisé, départ √κ_Y + 0,2), **en gardant
+les (a, b) du capteur** : augmenter (a, b) à la place fausserait
+l'inverse exacte au retour (§5.3). Détail : `OPTIMISATION.md` §2.4.
+
+### 6.6 Deux erreurs à éviter
+
+**Estimer σ sur l'image démosaïquée.** `estimate_noise_sigma` (§7)
+mesure la sous-bande d'ondelettes la plus fine, c'est-à-dire les hautes
+fréquences du bruit — que le démosaïçage a atténuées. Après
+Hamilton-Adams, il trouve **la moitié** du vrai σ (×0.50 à bruit fort,
+×0.56 à bruit moyen) : NL-Bayes sous-débruite et laisse des taches
+colorées (−2.6 dB, ΔE 5.5 au lieu de 3.3 à bruit fort). Estimer σ — ou
+``(a, b)`` — sur la **mosaïque brute** (sous-plans R, G1, G2, B, où le
+bruit est encore blanc ; ×1.00 à ×1.15 du vrai σ) ou sur le capteur
+(PTC d'eoqual-measure).
+
+**Débruiter la mosaïque avant de démosaïquer.** Sur les quatre
+sous-plans en demi-résolution, le bruit est blanc et le modèle exact —
+mais la résolution est réduite et la position relative des couleurs
+perdue : −0.3 à −0.9 dB par rapport à « démosaïquer puis débruiter avec
+C » (eoqual-demosaicing §11.6, Jin et al. 2020).
+
+### 6.7 Résultats indicatifs
+
+Orthophoto (© Toulouse Métropole, Licence Ouverte v2.0), bruit de capteur
+simulé, CPSNR (dB) en sRGB, bruit fort / moyen / faible
+(eoqual-demosaicing §11.6-11.7) :
+
+| Chaîne | fort | moyen | faible |
+|---|---|---|---|
+| HA → NL-Bayes, σ du capteur (C = 1), stabilisation avec (a, b) | 30.97 | 34.00 | 35.79 |
+| HA → NL-Bayes, C = √κ_Y + 0.2 = 1.36 | 31.54 | 34.13 | 35.72 |
+| `gbtf` → NL-Bayes, C = 1.75 | 32.16 | 35.11 | 37.42 |
+| `ari` → NL-Bayes, C = 1.0 | 31.46 | 35.22 | 37.92 |
+| `ari` → DRUNet couleur (deepinv), 1.5σ₀ (autre tirage, §11.6) | 32.76 | 35.51 | 37.83 |
+
+Le choix du démosaïqueur pèse autant que celui de σ : Hamilton-Adams a
+ses propres fausses couleurs, que le débruitage ne corrige pas
+(eoqual-demosaicing §11.8). DRUNet demande un facteur plus fort que
+NL-Bayes (1.5 à 1.75 avec HA).
+
+**Référence** : Q. Jin, G. Facciolo, J.-M. Morel, « A Review of an Old
+Dilemma: Demosaicking First, or Denoising First? », CVPR Workshops 2020
+(arXiv 2004.11577).
+
+## 7. Utilisation et conventions
 
 Conventions communes à toutes les méthodes décrites aux §2 et §3.
 
@@ -880,7 +1092,7 @@ Conventions communes à toutes les méthodes décrites aux §2 et §3.
   par bande. Une image contenant des NaN ou des infinis est refusée
   (`ValueError`).
 - **Image brute de capteur** (bruit photonique + bruit de lecture) :
-  passer par `vst_denoise` (§4), qui stabilise la variance avant
+  passer par `vst_denoise` (§5), qui stabilise la variance avant
   d'appeler la méthode choisie.
 - **`sigma` est toujours exprimé dans les unités de l'image** (comptes
   numériques, réflectance...), pas en fraction de dynamique. Chaque
@@ -889,7 +1101,8 @@ Conventions communes à toutes les méthodes décrites aux §2 et §3.
   d'échelle** : le même résultat relatif est obtenu sur une image 8 bits,
   12 bits ou en réflectance (vérifié par
   `tests/test_socle.py::test_socle_method_scale_invariant`).
-- `sigma=None` → estimation automatique par `estimate_noise_sigma`
+- `sigma=None` → estimation automatique par `estimate_noise_sigma` (voir
+  aussi §4.3)
   (estimateur MAD de Donoho & Johnstone sur la sous-bande d'ondelettes
   diagonale la plus fine). Cet estimateur est fiable pour un bruit blanc
   sur une image texturée modérément. Il **surestime** σ sur une image
@@ -907,15 +1120,15 @@ Conventions communes à toutes les méthodes décrites aux §2 et §3.
   message d'erreur explicite (quoi installer, quelle licence) s'ils
   manquent.
 
-## 7. Méthode non incluse
+## 8. Méthode non incluse
 
 WNLB (Wavelet Non-Local Bayes) : source sans licence, aucune publication
 identifiée. Voir `THIRD_PARTY_LICENSES.md` §2.4, et §3 pour l'évaluation
 d'une réimplémentation.
 
-## 8. Tests, exemples et performances indicatives
+## 9. Tests, exemples et performances indicatives
 
-### 8.1 Tests
+### 9.1 Tests
 
 Images de test : `astronaut` (NASA, domaine public), réduite à 128×128
 (niveaux de gris) ou 96×96 (couleur), bruit blanc gaussien σ = 0,1
@@ -933,24 +1146,24 @@ de l'incertitude (5 incertitudes-types), jamais fixées au jugé.
 | `test_deepinv.py` | méthodes deepinv ; modèles à poids téléchargés seulement si `EOQUAL_TEST_DOWNLOAD=1` |
 | `test_external.py` | `bm3d`, `nl_ridge_inria`, `nl_bayes_ipol` (sautés si absents) ; protocole d'appel de l'exécutable IPOL testé avec un faux programme |
 | `test_vst.py` | transformée d'Anscombe : cas particuliers, raccord, absence de biais (Monte-Carlo), variance exacte, simulateur, gain à faible flux |
-| `test_optimization.py` | espaces de recherche (fichiers JSONC, cohérence avec les signatures, point de départ = défauts), unités, séquentiel / parallèle, recherche exhaustive, contrainte, SSIM, mode GAT, échecs pénalisés, journal, figures |
+| `test_optimization.py` | optimisation des paramètres (détail : `OPTIMISATION.md` §7) |
 | `test_examples.py` | chaque script de `examples/` lancé en sous-processus avec des tailles réduites |
 
 Les méthodes dont l'extra ou le composant externe manque sont sautées
 (`skip`), jamais comptées en échec.
 
-### 8.2 Exemples
+### 9.2 Exemples
 
 | Script | Usage |
 |---|---|
 | `one_method_cli.py` | débruiter un fichier (niveaux de gris, couleur pour `nl_bayes`, image brute avec `--vst-gain`) ; `--list` |
 | `all_methods_overview.py` | comparer les méthodes disponibles (PSNR, SSIM, temps) et enregistrer une planche |
-| `low_light_vst.py` | effet de la stabilisation de variance à faible flux (tableaux du §4.5) |
-| `optimize_parameters.py` | optimiser les paramètres d'une méthode (§5) : journal, meilleurs paramètres, image, figures |
+| `low_light_vst.py` | effet de la stabilisation de variance à faible flux (tableaux du §5.5) |
+| `optimize_parameters.py` | optimiser les paramètres d'une méthode (`OPTIMISATION.md`) : journal, meilleurs paramètres, image, figures |
 | `benchmark.py` | benchmark principal (`BENCHMARK.md` §2-3) |
 | `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes (`BENCHMARK.md` §8) |
 
-### 8.3 Performances indicatives
+### 9.3 Performances indicatives
 
 **Le benchmark de référence est `BENCHMARK.md`** (astronaut 512×512,
 réglage et évaluation séparés, PSNR et SSIM, réglages par défaut et
@@ -996,19 +1209,19 @@ Ces chiffres portent sur une seule image naturelle et ne préjugent pas
 du classement sur des images EO. Ils servent de référence de
 non-régression, pas de benchmark.
 
-## 9. Évolutions envisagées
+## 10. Évolutions envisagées
 
 - Réimplémentations MIT depuis les publications : NL-Bayes et NL-Ridge
   **faits** (§2.6, §2.7) ; reste éventuellement BM3D (sous réserve du brevet) — évaluation dans
   `THIRD_PARTY_LICENSES.md` §3.
-- **Bruit coloré** (spatialement corrélé) : voir §9.1 ; le cas du
-  démosaïçage est traité au §10.
+- **Bruit coloré** (spatialement corrélé) : voir §10.1 ; le cas du
+  démosaïçage est traité au §6.
 - **DRUNet couleur** : `drunet` est en niveaux de gris ; les poids couleur
   de deepinv (BSD-3-Clause) donnent, après démosaïçage, 0.2 à 0.9 dB de
-  plus que NL-Bayes couleur (§10.6).
-- **Moteur d'optimisation** : remplacer scikit-optimize (archivé) par
-  Optuna (`GPSampler` ou `TPESampler`), en gardant les mêmes fichiers
-  d'espaces de recherche (§5.5).
+  plus que NL-Bayes couleur (§6.7).
+- **τ₀ relatif** : exprimer le seuil de regroupement τ₀ de NL-Bayes en
+  multiple de σ², pour qu'il ne dépende plus de l'échelle (§4.2).
+- **Optimisation** : évolutions propres dans `OPTIMISATION.md` §8.
 - **NL-Bayes et NL-Ridge sur GPU** : portage PyTorch du moteur
   vectorisé (mêmes opérations par lots : extraction, `matmul`, `solve`),
   prochain gain de vitesse significatif.
@@ -1029,7 +1242,7 @@ non-régression, pas de benchmark.
   réel aveugle ; à évaluer en niveaux de gris (image répliquée sur 3
   canaux) avant intégration.
 
-### 9.1 Bruit coloré
+### 10.1 Bruit coloré
 
 **Définition.** Un bruit **blanc** est indépendant d'un pixel à l'autre :
 son spectre de puissance (NPS, *Noise Power Spectrum*) est plat, toutes
@@ -1050,7 +1263,7 @@ coloré dès qu'un traitement mélange des pixels :
 - **déconvolution et restauration de MTF** : elles amplifient les hautes
   fréquences, le bruit y devient dominant ;
 - **dématriçage** (Bayer) : corrélations spatiales et entre canaux —
-  cas traité en détail au §10 ;
+  cas traité en détail au §6 ;
 - **compression** (JPEG, JPEG 2000, CCSDS) : motifs de blocs ou d'ondelettes
   liés à la quantification ;
 - **défauts d'égalisation et rayures** des capteurs pushbroom : bruit
@@ -1084,156 +1297,12 @@ correct alors que le spectre du bruit est très inégal.
    qui colore le bruit, chaque fois que la chaîne le permet (par exemple
    débruiter avant l'orthorectification). **Exception mesurée : le
    démosaïçage** — débruiter la mosaïque perd la résolution ; mieux vaut
-   débruiter après, avec un σ majoré (§10.5).
+   débruiter après, avec un σ majoré (§6.6).
 
 **Validation envisagée.** Simuler un bruit blanc, le colorer par un
 filtre connu (interpolation bicubique, filtre de Wiener inverse), puis
 comparer pour une même méthode : réglage par σ global, blanchiment +
 débruitage + recoloration, et `sigma_psd` pour BM3D.
-
-
-## 10. Cas particulier : débruiter une image démosaïquée
-
-### 10.1 Quand ce chapitre s'applique
-
-Une image couleur issue d'un capteur à **matrice de filtres colorés**
-(Bayer RGGB ou similaire) a été **démosaïquée** : chaque pixel n'a mesuré
-qu'une couleur, les deux autres ont été interpolées. Le bruit n'est alors
-plus celui du capteur — il est corrélé entre pixels et entre canaux
-(§9.1), et un débruiteur réglé avec le σ du capteur laisse des taches
-colorées. Pour une image en niveaux de gris, une image panchromatique ou
-multispectrale à un capteur par bande, ou une mosaïque brute non
-démosaïquée, ce chapitre ne s'applique pas : §4 (bruit poisson-gaussien)
-et §6 suffisent.
-
-Ce chapitre donne la recette côté débruitage ; la théorie détaillée, la
-mesure pour chaque démosaïqueur et les études sur orthophoto sont dans la
-référence technique d'**eoqual-demosaicing**, chapitre 11.
-
-### 10.2 Modèle de bruit du capteur
-
-Pour une luminance linéaire normalisée ``L ∈ [0, 1]`` (niveau d'obscurité
-soustrait) :
-
-```
-var(L) = a + b · L         a = (σ_r / N_sat)²  (plancher : lecture, obscurité)
-                           b = 1 / N_sat        (pente : bruit photonique)
-```
-
-avec ``N_sat`` les électrons à pleine échelle et ``σ_r`` le bruit de
-lecture en électrons. C'est le modèle du §4.1, écrit en luminance
-normalisée (le §4.1 note la même droite ``σ² = a·μ + b`` avec les rôles
-de ``a`` et ``b`` inversés). Correspondance avec les fonctions du §4 :
-
-```python
-from eoqual.denoising.vst import generalized_anscombe, inverse_generalized_anscombe
-gain, read_noise = 1.0 / b, a ** 0.5          # var = a + b·L
-g = generalized_anscombe(L, gain, read_noise)  # bruit d'écart-type ≈ 1
-```
-
-### 10.3 Ce que le démosaïçage fait du bruit
-
-Un démosaïqueur calcule chaque canal comme une moyenne pondérée de
-photosites voisins (poids ``w``, ``Σ w = 1``). Le bruit de sortie en est
-la même combinaison : sa variance par canal vaut ``σ²(L)·Σ w²`` (≤ σ²),
-et les poids partagés le **corrèlent** entre pixels et entre canaux. En
-luminance ``Y = (R+G+B)/√3``, des canaux corrélés positivement
-**augmentent** la variance ; en chrominance (différences de canaux), elle
-**diminue**, mais ce qui reste est de basse fréquence. On note ``κ_Y`` le
-rapport des variances de Y après / avant démosaïçage (eoqual-demosaicing
-§11.3, champ uniforme) :
-
-| Démosaïqueur | κ_Y | √κ_Y + 0.2 |
-|---|---|---|
-| `bilinear` | 0.58 | 0.96 |
-| `ari` | 0.62 | 0.99 |
-| `ri`, `mlri` | 0.79 à 0.87 | 1.09 à 1.13 |
-| `ha` (Hamilton-Adams) | 1.35 | 1.36 |
-| `malvar` | 2.05 | 1.63 |
-| `gbtf` | 2.41 | 1.75 |
-| `dlmmse` | 2.58 | 1.80 |
-
-### 10.4 Recette
-
-1. **Démosaïquer** (eoqual-demosaicing), en luminance linéaire.
-2. **Stabiliser** l'image démosaïquée avec ``(a, b)`` du capteur.
-3. **Débruiter avec σ = C**, ``C = √κ_Y + 0.2``, avec un débruiteur
-   **couleur** (`nl_bayes` en mode `"yuv"`).
-4. **Inverser** la stabilisation (inverse exacte non biaisée, §4.3).
-
-```python
-g = generalized_anscombe(rgb, 1.0 / b, a ** 0.5)
-d = nl_bayes_denoise(g, sigma=C, data_range=(g.min(), g.max()))
-rgb_debruitee = inverse_generalized_anscombe(d, 1.0 / b, a ** 0.5)
-```
-
-Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
-bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
-
-Mode opératoire complet sur données réelles (unités de ``(a, b)``,
-valeurs de C à balayer pour Hamilton-Adams et GBTF, critères sans vérité
-terrain) : eoqual-demosaicing, §11.11, exemple
-`examples/real_data_protocol.py` et notebook `examples/demosaicing_noise.ipynb`.
-
-**Pourquoi √κ_Y + 0.2.** NL-Bayes couleur règle son étape principale sur
-le bruit de la luminance, d'écart-type ``√κ_Y`` dans le domaine stabilisé
-(d'où ``√κ_Y``) ; le terme ``+0.2``, empirique, efface le bruit de
-chrominance basse fréquence, que le débruiteur prend sinon pour du signal.
-Validation (19 démosaïqueurs × 3 niveaux de bruit × 4 zones d'une
-orthophoto, eoqual-demosaicing §11.4) — perte moyenne par rapport au
-meilleur C de chaque cas :
-
-| Règle | bruit fort | moyen | faible |
-|---|---|---|---|
-| C = 1 (σ du capteur) | 1.12 dB | 0.47 dB | 0.22 dB |
-| C = 1.5 fixe (Jin et al. 2020) | 0.31 dB | 0.18 dB | 0.15 dB |
-| C = 1.25 fixe | 0.63 dB | 0.20 dB | 0.13 dB |
-| **C = √κ_Y + 0.2** | **0.08 dB** | **0.04 dB** | **0.05 dB** |
-
-(Le facteur fixe 1.5 de Jin, Facciolo & Morel 2020 correspond à un
-démosaïqueur de κ_Y ≈ 1.7 ; il est trop fort pour les méthodes à faible
-κ_Y et trop faible pour GBTF ou DLMMSE.)
-
-### 10.5 Deux erreurs à éviter
-
-**Estimer σ sur l'image démosaïquée.** `estimate_noise_sigma` (§6)
-mesure la sous-bande d'ondelettes la plus fine, c'est-à-dire les hautes
-fréquences du bruit — que le démosaïçage a atténuées. Après
-Hamilton-Adams, il trouve **la moitié** du vrai σ (×0.50 à bruit fort,
-×0.56 à bruit moyen) : NL-Bayes sous-débruite et laisse des taches
-colorées (−2.6 dB, ΔE 5.5 au lieu de 3.3 à bruit fort). Estimer σ — ou
-``(a, b)`` — sur la **mosaïque brute** (sous-plans R, G1, G2, B, où le
-bruit est encore blanc ; ×1.00 à ×1.15 du vrai σ) ou sur le capteur
-(PTC d'eoqual-measure).
-
-**Débruiter la mosaïque avant de démosaïquer.** Sur les quatre
-sous-plans en demi-résolution, le bruit est blanc et le modèle exact —
-mais la résolution est réduite et la position relative des couleurs
-perdue : −0.3 à −0.9 dB par rapport à « démosaïquer puis débruiter avec
-C » (eoqual-demosaicing §11.6, Jin et al. 2020).
-
-### 10.6 Résultats indicatifs
-
-Orthophoto (© Toulouse Métropole, Licence Ouverte v2.0), bruit de capteur
-simulé, CPSNR (dB) en sRGB, bruit fort / moyen / faible
-(eoqual-demosaicing §11.6-11.7) :
-
-| Chaîne | fort | moyen | faible |
-|---|---|---|---|
-| HA → NL-Bayes, σ du capteur (C = 1), stabilisation avec (a, b) | 30.97 | 34.00 | 35.79 |
-| HA → NL-Bayes, C = √κ_Y + 0.2 = 1.36 | 31.54 | 34.13 | 35.72 |
-| `gbtf` → NL-Bayes, C = 1.75 | 32.16 | 35.11 | 37.42 |
-| `ari` → NL-Bayes, C = 1.0 | 31.46 | 35.22 | 37.92 |
-| `ari` → DRUNet couleur (deepinv), 1.5σ₀ (autre tirage, §11.6) | 32.76 | 35.51 | 37.83 |
-
-Le choix du démosaïqueur pèse autant que celui de σ : Hamilton-Adams a
-ses propres fausses couleurs, que le débruitage ne corrige pas
-(eoqual-demosaicing §11.8). DRUNet demande un facteur plus fort que
-NL-Bayes (1.5 à 1.75 avec HA).
-
-**Référence** : Q. Jin, G. Facciolo, J.-M. Morel, « A Review of an Old
-Dilemma: Demosaicking First, or Denoising First? », CVPR Workshops 2020
-(arXiv 2004.11577).
 
 ## Annexe A — Historique des choix et corrections
 
@@ -1247,14 +1316,12 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-10-28 | Socle | Méthodes du socle écrites comme couches d'appel vers OpenCV et scikit-image, sans code tiers copié. Valeurs par défaut calibrées par balayage sur astronaut : bilatéral `sigma_color` = 2,5σ, TV Chambolle 0,75σ, TV Bregman 1/σ, ondelettes `db2`. |
 | 2026-10-28 | Stabilisation de variance | Inverse exacte non biaisée de la GAT implémentée depuis Mäkitalo & Foi, validée par Monte-Carlo. Test de stabilisation de la variance corrigé : une tolérance fixe de 5 % échouait sur une graine sur 30 à λ = 5 e⁻ ; remplacée par la comparaison à la variance exacte calculée (1,042 à 5 e⁻), à 5 incertitudes-types. |
 | 2026-10-28 | Débruiteurs deepinv | Ajout de SwinIR, Restormer, GS-DRUNet, EPLL, TGV et du dictionnaire d'ondelettes. TGV : `weight` = 7,5σ (deepinv multiplie le seuil par 0,1 et 0,15) ; dictionnaire : 1,25σ. Chargement des poids GS-DRUNet par la couche d'appel (clés de métriques d'entraînement refusées par deepinv 0.4.2). Dictionnaire d'ondelettes mis en extra séparé à cause de `ptwt` (EUPL-1.2). |
-| 2026-10-28 | Optimisation | Moteur d'optimisation bayésienne repris d'un outil antérieur de l'auteur, sans ses débruiteurs. Conflit corrigé : le paramètre `method` de `wavelet_denoise` empêchait l'appel par `denoise` ; l'optimiseur appelle la fonction de la méthode directement. Point de départ de SwinIR retiré : fixé aux poids « 25 » alors que le choix automatique donne « 15 », il affichait un faux gain de 2,09 dB. |
 | 2026-10-28 | NL-Bayes | Réimplémentation clean-room depuis l'article IPOL (moteur boucle). L'appel à l'exécutable IPOL, d'abord nommé `nl_bayes`, devient `nl_bayes_ipol`. Exécutable compilé sous macOS (libpng, fftw, libomp) et testé. |
 | 2026-10-29 | Mesures NL-Bayes | Biais de mesure corrigé : avec `data_range=(0, 1)`, le wrapper IPOL tronquait les valeurs bruitées hors [0, 1] avant la quantification 8 bits, ce qui pénalisait l'IPOL de 0,2 à 1,8 dB sur une comparaison 256×256. Sans troncature, IPOL et version native sont à égalité (±0,1 dB). Le benchmark principal, mesuré avec la dynamique par défaut, n'était pas affecté. |
 | 2026-10-29 | Appel unifié | Paramètre `method` de `wavelet_denoise` renommé `rule` ; test du contrat de signature ajouté pour toutes les méthodes. |
 | 2026-10-29 | NL-Bayes vectorisé | Moteur par lots sur grille de références (pas 3). Étapes d'optimisation : matrice de filtrage d×d par groupe au lieu d'un système par candidat (×2,5), groupes de l'étape 2 traités par paquets de taille voisine, agrégation restreinte aux positions touchées (`np.unique` + `bincount`, au lieu d'un `bincount` sur toute l'image à chaque lot), répartition sur plusieurs fils. Résultat : ~1,7 fois plus rapide que la boucle à qualité égale. |
 | 2026-10-29 | NL-Bayes couleur | Modes `yuv` (article), `rgb`, `channel` ; profils de paramètres gris et couleur ; `window_factor` et règle N ≥ k² + 1. |
 | 2026-10-29 | NL-Ridge | Réimplémentation clean-room depuis les articles ICIP 2022 et SIAM 2025, à ≤ 0,04 dB du code des auteurs. L'appel au clone AGPL, d'abord nommé `nl_ridge`, devient `nl_ridge_inria`. |
-| 2026-10-29 | Espaces de recherche | Passage de dictionnaires Python à un fichier JSONC commenté par méthode ; espace de NL-Bayes étendu à 10 dimensions. |
-| 2026-10-29 | Figures d'optimisation | `plot_evaluations` de scikit-optimize échouait pour un espace à une dimension : tracé manuel dans ce cas. |
 | 2026-10-29 | Tests et exemples | Tests découpés par thème avec fixtures partagées (`conftest.py`) ; tests des utilitaires, des fichiers d'espaces et des exemples ajoutés ; exemples dotés d'options de taille réduite. |
-| 2026-11-02 | Contraintes déclaratives (0.1.1) | L'espace de NL-Ridge autorisait k₁ ≥ p₁² (p₁ = 5, k₁ jusqu'à 40) : YᵀY singulière à l'étape 1, PSNR de 1,6 dB, sans erreur signalée. Correction : clé `"constraints"` dans les fichiers d'espaces, analysée sans évaluation de code et appliquée automatiquement par `optimize_parameters` (mécanisme équivalent au `build_space_constraint` de l'outil d'origine, rendu déclaratif) ; contrainte `k1 < p1 * p1` sur `nl_ridge` et `nl_ridge_inria` ; `nl_ridge_denoise` et `nl_ridge_inria_denoise` refusent un tel réglage. |
+| 2026-11-16 | σ et réorganisation | Chapitre 4 « Le niveau de bruit σ » ajouté : rôle de σ dans chaque formule de NL-Bayes, seuils τ et τ₀ du regroupement, origine de σ et conversion 0-255, modèle (a, b) et stabilisation, facteur C après démosaïçage, réglage par optimisation. Chapitres réordonnés (σ §4, stabilisation §5, image démosaïquée §6 ex-§10, optimisation §7 ex-§5, puis §8 à §11 ex-§6 à §9). Origine du terme VST documentée au §5. Optimisation étendue aux images couleur (`nl_bayes`) et paramètre `sigma_scale0` pour partir de C = √κ_Y + 0,2 ; borne haute de `sigma_scale` de NL-Bayes portée à 2,5 (C atteint 1,8). Correction d'une recommandation antérieure : en mode stabilisation, `sigma_scale` n'est pas superflu, c'est le facteur C (§6.5). |
+| 2026-11-16 | Optimisation séparée | Le chapitre « Optimisation des paramètres » (ex-§7) et le réglage de σ (ex-§4.6, détail du §6.5) passent dans `OPTIMISATION.md` ; les §8 à §11 deviennent §7 à §10. Le cœur de métier (méthodes, σ, stabilisation, image démosaïquée) reste ici. |

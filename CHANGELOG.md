@@ -6,6 +6,26 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.2.0 (2026-11-16)
+
+:   -   **Optimisation sur image couleur** : `optimize_parameters`
+        accepte une image (H, W, 3) pour les méthodes couleur
+        (`nl_bayes`), score PSNR sur les trois canaux ou SSIM moyen.
+    -   **`sigma_scale0`** (et `--kappa-y` dans
+        `examples/optimize_parameters.py`) : point de départ de
+        `sigma_scale`, typiquement C = √κ_Y + 0,2 pour une image
+        démosaïquée ; borne haute de `sigma_scale` de NL-Bayes portée à
+        2,5.
+    -   **Documentation réorganisée en deux** :
+        -   `REFERENCE_TECHNIQUE.md` (cœur de métier) : nouveau
+            chapitre 4 « Le niveau de bruit σ » (rôle dans chaque formule
+            de NL-Bayes, seuils τ et τ₀, origine de σ et échelle 0-255,
+            modèle (a, b) et stabilisation, facteur C) ; stabilisation en
+            §5, image démosaïquée en §6 ; origine du terme VST documentée ;
+        -   `OPTIMISATION.md` (nouveau) : optimisation des paramètres,
+            dont le réglage de σ et du modèle de bruit (fixer (a, b),
+            optimiser C), espaces de recherche, exécution, précautions.
+
 0.1.2 (2026-11-04)
 
 :   -   `REFERENCE_TECHNIQUE.md` §10 : **débruiter une image
@@ -63,4 +83,4 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Évolutions futures
 
-Voir `REFERENCE_TECHNIQUE.md` §9 et `THIRD_PARTY_LICENSES.md` §3.
+Voir `REFERENCE_TECHNIQUE.md` §11 et `THIRD_PARTY_LICENSES.md` §3.

@@ -65,7 +65,7 @@ l'intégration retirée si nécessaire.
 ## Tests
 
 Toute nouvelle méthode doit être testée (voir
-`REFERENCE_TECHNIQUE.md` §8.1) :
+`REFERENCE_TECHNIQUE.md` §9.1) :
 
 - une méthode du socle est couverte automatiquement par
   `tests/test_socle.py` (gain de PSNR, σ estimé, invariance d'échelle) ;
@@ -83,5 +83,6 @@ Mettre à jour `BENCHMARK.md` avec `examples/benchmark.py`.
 
 Toute méthode nouvelle ou modifiée doit rester reflétée dans `README.md`
 (catalogue), `REFERENCE_TECHNIQUE.md` (principe, implémentation,
-limites), `THIRD_PARTY_LICENSES.md` (licence) et `BIBLIOGRAPHY.md`
+limites), `OPTIMISATION.md` (espace de recherche, si la méthode est
+réglable), `THIRD_PARTY_LICENSES.md` (licence) et `BIBLIOGRAPHY.md`
 (référence). Les docstrings seules ne suffisent pas.
