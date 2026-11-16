@@ -61,6 +61,7 @@ __all__ = [
     "expected_gat",
     "add_poisson_gaussian_noise",
     "vst_denoise",
+    "NOISE_FACTOR_RANGE",
     "INVERSES",
     "LAMBDA_MAX",
 ]
@@ -259,6 +260,12 @@ def add_poisson_gaussian_noise(
     return p / gain + offset_dn + rng.normal(0.0, read_noise_dn, size=lam.shape)
 
 
+#: Plage plausible du facteur de bruit après stabilisation (au-delà :
+#: avertissement, probable erreur d'unités). C = √κ_Y + 0,2 va de 0,57
+#: (interpolation bicubique) à 1,8 (DLMMSE) pour les démosaïqueurs mesurés.
+NOISE_FACTOR_RANGE = (0.5, 2.5)
+
+
 def vst_denoise(
     image: np.ndarray,
     method: str,
@@ -266,16 +273,18 @@ def vst_denoise(
     read_noise_dn: float = 0.0,
     offset_dn: float = 0.0,
     inverse: str = "exact_unbiased",
+    noise_factor: float = 1.0,
     **kwargs,
 ) -> np.ndarray:
     """
     Débruite une image affectée d'un bruit poisson-gaussien :
-    GAT → débruiteur gaussien (``sigma = 1``) → inverse.
+    GAT → débruiteur gaussien (σ = ``noise_factor``, 1 par défaut) → inverse.
 
     Parameters
     ----------
     image : np.ndarray
-        Image brute 2D, en DN.
+        Image brute en DN : 2D, ou (H, W, 3) pour une méthode couleur
+        (``nl_bayes``, par exemple une image démosaïquée).
     method : str
         Nom d'une méthode du registre (voir ``list_methods()``).
     gain : float
@@ -286,21 +295,55 @@ def vst_denoise(
         Niveau d'obscurité, en DN.
     inverse : {"exact_unbiased", "asymptotic", "algebraic"}
         Inverse utilisée (voir :func:`inverse_generalized_anscombe`).
+    noise_factor : float
+        σ donné à la méthode dans le domaine stabilisé, où le bruit vaut 1
+        par construction. Laisser 1 pour une image brute. Pour une image
+        démosaïquée, le facteur C = √κ_Y + 0,2 du démosaïqueur
+        (REFERENCE_TECHNIQUE.md §6.4) : la transformée et son inverse
+        restent exactes, seul le niveau de débruitage change. Avertissement
+        hors de ``NOISE_FACTOR_RANGE``.
     **kwargs
-        Transmis au débruiteur (``sigma`` est imposé à 1 et ne doit pas
-        être fourni).
+        Transmis au débruiteur. ``sigma`` est refusé : il vaut 1 (ou
+        ``noise_factor``) après stabilisation.
 
     Returns
     -------
     np.ndarray
-        Image débruitée, en DN.
+        Image débruitée, en DN, même forme que l'entrée.
+
+    Raises
+    ------
+    ValueError
+        Si ``sigma`` est fourni, ``noise_factor`` ≤ 0, ou l'image n'est pas
+        acceptée par la méthode.
     """
+    import warnings
+
+    from .config import COLOR_METHODS
     from .runner import denoise
     from .utils import check_image
 
     if "sigma" in kwargs:
-        raise ValueError("sigma est imposé à 1 dans le domaine transformé : ne pas le fournir.")
-    img = check_image(image)
+        raise ValueError(
+            "sigma vaut 1 après stabilisation de variance : ne pas le fournir. "
+            "Pour une image démosaïquée, utiliser noise_factor (C = √κ_Y + 0,2)."
+        )
+    if not noise_factor > 0:
+        raise ValueError(f"noise_factor doit être > 0, reçu {noise_factor}.")
+    lo, hi = NOISE_FACTOR_RANGE
+    if not lo <= noise_factor <= hi:
+        warnings.warn(
+            f"noise_factor = {noise_factor:g} hors de la plage plausible [{lo:g}, {hi:g}] "
+            "(le bruit vaut 1 après stabilisation) : vérifier les unités.",
+            stacklevel=2,
+        )
+    arr = np.asarray(image, dtype=np.float64)
+    if arr.ndim == 3 and arr.shape[-1] == 3 and method in COLOR_METHODS:
+        if not np.all(np.isfinite(arr)):
+            raise ValueError("L'image contient des valeurs non finies (NaN/inf).")
+        img = arr
+    else:
+        img = check_image(arr)
     d = generalized_anscombe(img, gain, read_noise_dn, offset_dn)
-    d_hat = denoise(d, method=method, sigma=1.0, **kwargs)
+    d_hat = denoise(d, method=method, sigma=float(noise_factor), **kwargs)
     return inverse_generalized_anscombe(d_hat, gain, read_noise_dn, offset_dn, method=inverse)

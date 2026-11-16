@@ -744,6 +744,12 @@ d'écart-type **1 partout**. NL-Bayes reçoit alors `σ = 1` :
   palier de patchs suit donc le niveau de signal, ce qui est le
   comportement voulu.
 
+**σ est imposé, pas fourni.** `vst_denoise` refuse un argument `sigma`
+(erreur, et non simple avertissement : un σ dans les unités de l'image
+n'a plus de sens après la transformée, et l'ignorer en silence masquerait
+une erreur). Le seul écart permis à σ = 1 est explicite : le paramètre
+`noise_factor` (§4.5).
+
 | Situation | Stabilisation | Effet mesuré (§5.5) |
 |---|---|---|
 | Image brute, bruit photonique dominant | **oui** | +4 à +10 dB |
@@ -762,6 +768,11 @@ facteur κ_Y propre au démosaïqueur (0,6 à 2,6, §6.3), la forme affine
 2. débruiter avec **σ = C** au lieu de 1, `C = √κ_Y + 0,2` (√κ_Y pour la
    luminance, +0,2 pour la chrominance basse fréquence) ;
 3. inverser la stabilisation.
+
+Dans le code, C est le paramètre **`noise_factor`** de `vst_denoise`
+(défaut 1). Une valeur hors de [0,5 ; 2,5] déclenche un avertissement :
+C va de 0,57 à 1,8 pour les démosaïqueurs mesurés, au-delà il s'agit
+probablement d'une erreur d'unités.
 
 Augmenter a et b pour tenir compte du démosaïçage revient presque au même
 pour le débruitage, mais **fausse l'inverse exacte** au retour (§6.5) : le
@@ -865,7 +876,10 @@ out = d.vst_denoise(raw, "drunet", gain=2.0, read_noise_dn=1.5, offset_dn=100.0)
 ```
 
 `vst_denoise` applique la GAT, appelle la méthode choisie avec
-`sigma = 1`, puis l'inverse exacte. Les briques sont aussi exposées
+`sigma = 1`, puis l'inverse exacte. Un argument `sigma` est refusé ; le
+seul écart à 1 passe par `noise_factor` (facteur C d'une image
+démosaïquée, §4.5 et §6.4). L'image peut être couleur (H, W, 3) pour
+`nl_bayes`. Les briques sont aussi exposées
 séparément : `generalized_anscombe`, `inverse_generalized_anscombe`,
 `expected_gat`, `add_poisson_gaussian_noise` (simulateur du même
 modèle).
@@ -988,10 +1002,18 @@ rapport des variances de Y après / avant démosaïçage (eoqual-demosaicing
 4. **Inverser** la stabilisation (inverse exacte non biaisée, §5.3).
 
 ```python
-g = generalized_anscombe(rgb, 1.0 / b, a ** 0.5)
-d = nl_bayes_denoise(g, sigma=C, data_range=(g.min(), g.max()))
-rgb_debruitee = inverse_generalized_anscombe(d, 1.0 / b, a ** 0.5)
+from eoqual.denoising import vst_denoise
+
+C = 1.35 ** 0.5 + 0.2                  # Hamilton-Adams : κ_Y = 1,35
+rgb_debruitee = vst_denoise(
+    rgb, "nl_bayes",                   # image (H, W, 3)
+    gain=1.0 / b, read_noise_dn=a ** 0.5,   # var = a + b·L
+    noise_factor=C, color_mode="yuv",
+)
 ```
+
+En ligne de commande : `examples/one_method_cli.py demosaiquee.tif
+sortie.tif --method nl_bayes --vst-gain … --vst-read-noise … --kappa-y 1.35`.
 
 Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
 bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
@@ -1325,3 +1347,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-10-29 | Tests et exemples | Tests découpés par thème avec fixtures partagées (`conftest.py`) ; tests des utilitaires, des fichiers d'espaces et des exemples ajoutés ; exemples dotés d'options de taille réduite. |
 | 2026-11-16 | σ et réorganisation | Chapitre 4 « Le niveau de bruit σ » ajouté : rôle de σ dans chaque formule de NL-Bayes, seuils τ et τ₀ du regroupement, origine de σ et conversion 0-255, modèle (a, b) et stabilisation, facteur C après démosaïçage, réglage par optimisation. Chapitres réordonnés (σ §4, stabilisation §5, image démosaïquée §6 ex-§10, optimisation §7 ex-§5, puis §8 à §11 ex-§6 à §9). Origine du terme VST documentée au §5. Optimisation étendue aux images couleur (`nl_bayes`) et paramètre `sigma_scale0` pour partir de C = √κ_Y + 0,2 ; borne haute de `sigma_scale` de NL-Bayes portée à 2,5 (C atteint 1,8). Correction d'une recommandation antérieure : en mode stabilisation, `sigma_scale` n'est pas superflu, c'est le facteur C (§6.5). |
 | 2026-11-16 | Optimisation séparée | Le chapitre « Optimisation des paramètres » (ex-§7) et le réglage de σ (ex-§4.6, détail du §6.5) passent dans `OPTIMISATION.md` ; les §8 à §11 deviennent §7 à §10. Le cœur de métier (méthodes, σ, stabilisation, image démosaïquée) reste ici. |
+| 2026-11-16 | `noise_factor` (0.2.1) | `vst_denoise` gagne un paramètre `noise_factor` (σ dans le domaine stabilisé, défaut 1, avertissement hors de [0,5 ; 2,5]) et accepte une image couleur pour `nl_bayes` : la recette d'une image démosaïquée (§6.4) passe par lui au lieu d'enchaîner GAT, méthode et inverse à la main. Le refus de `sigma` est conservé (erreur plutôt qu'avertissement), avec un message qui oriente vers `noise_factor`. L'optimiseur et les exemples passent par `vst_denoise`. |

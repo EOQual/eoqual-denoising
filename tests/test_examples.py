@@ -104,3 +104,10 @@ def test_optimize_parameters_color_kappa(tmp_path):
     assert "√1.35 + 0.2" in stdout
     img = cv2.imread(str(tmp_path / "nl_bayes_denoised.tif"), cv2.IMREAD_UNCHANGED)
     assert img.ndim == 3
+
+
+def test_one_method_cli_vst_color_kappa(image_files, tmp_path):
+    out = tmp_path / "out.png"
+    stdout = run("one_method_cli.py", image_files / "couleur.png", out, "--method", "nl_bayes",
+                 "--vst-gain", 2, "--kappa-y", 1.35)
+    assert "noise_factor=1.362" in stdout and cv2.imread(str(out)).shape == (64, 64, 3)

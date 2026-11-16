@@ -9,6 +9,8 @@ Usage ::
     python examples/one_method_cli.py entree.tif sortie.tif --method bm3d --sigma 12.5
     python examples/one_method_cli.py couleur.png sortie.png --method nl_bayes --color-mode yuv
     python examples/one_method_cli.py brute.tif sortie.tif --method drunet --vst-gain 2 --vst-read-noise 1.5 --vst-offset 100
+    python examples/one_method_cli.py demosaiquee.tif sortie.tif --method nl_bayes --vst-gain 2 --vst-read-noise 1.5 \\
+        --vst-offset 100 --kappa-y 1.35
     python examples/one_method_cli.py --list
 
 - Sans ``--sigma``, l'écart-type du bruit est estimé sur l'image.
@@ -17,7 +19,9 @@ Usage ::
   niveaux de gris.
 - ``--vst-gain`` (et ``--vst-read-noise``, ``--vst-offset``, en DN) :
   image brute de capteur, débruitée par ``vst_denoise`` (stabilisation de
-  variance + méthode + inverse exacte).
+  variance + méthode + inverse exacte). Pour une image démosaïquée,
+  ``--kappa-y`` (κ_Y du démosaïqueur) fixe le facteur C = √κ_Y + 0,2
+  (ou ``--noise-factor`` directement).
 
 Lecture et écriture par OpenCV (TIFF, PNG...). Sortie en ``float32`` pour
 un TIFF, sinon tronquée et convertie au type de l'entrée.
@@ -47,6 +51,8 @@ def main() -> int:
     parser.add_argument("--vst-gain", type=float, default=None, help="gain K (e⁻/DN) : active la stabilisation de variance")
     parser.add_argument("--vst-read-noise", type=float, default=0.0, help="bruit de lecture (DN)")
     parser.add_argument("--vst-offset", type=float, default=0.0, help="niveau d'obscurité (DN)")
+    parser.add_argument("--noise-factor", type=float, default=None, help="σ après stabilisation (défaut 1)")
+    parser.add_argument("--kappa-y", type=float, default=None, help="image démosaïquée : noise_factor = √κ_Y + 0.2")
     parser.add_argument("--list", action="store_true", help="lister les méthodes et quitter")
     args = parser.parse_args()
 
@@ -62,7 +68,7 @@ def main() -> int:
         return 1
     if raw.ndim == 3:
         raw = raw[..., :3]
-        if args.method in COLOR_METHODS and args.vst_gain is None:
+        if args.method in COLOR_METHODS:
             raw = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB)
         else:
             print(f"{args.method} : image couleur convertie en niveaux de gris.")
@@ -71,9 +77,13 @@ def main() -> int:
     kwargs = {"color_mode": args.color_mode} if img.ndim == 3 else {}
 
     if args.vst_gain is not None:
-        print(f"méthode={args.method} + stabilisation de variance (K={args.vst_gain:g} e⁻/DN)")
+        noise_factor = args.noise_factor if args.noise_factor is not None else 1.0
+        if args.kappa_y is not None:
+            noise_factor = float(np.sqrt(args.kappa_y) + 0.2)
+        print(f"méthode={args.method} + stabilisation de variance (K={args.vst_gain:g} e⁻/DN, "
+              f"noise_factor={noise_factor:.3f})")
         out = vst_denoise(img, args.method, gain=args.vst_gain, read_noise_dn=args.vst_read_noise,
-                          offset_dn=args.vst_offset)
+                          offset_dn=args.vst_offset, noise_factor=noise_factor, **kwargs)
     else:
         if args.sigma is not None:
             kwargs["sigma"] = args.sigma

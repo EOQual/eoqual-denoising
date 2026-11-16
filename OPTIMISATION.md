@@ -62,7 +62,9 @@ régler, et comment.
 | τ₀ | seuil de regroupement de l'étape 2 | optimisé dans [0 ; 16] |
 
 `sigma_scale` multiplie σ dans le domaine où travaille NL-Bayes : le σ de
-l'image sans stabilisation, 1 avec stabilisation. Il compense un σ mal
+l'image sans stabilisation, 1 avec stabilisation. Dans ce second cas,
+c'est exactement le `noise_factor` de `vst_denoise` : le meilleur
+`sigma_scale` se réutilise tel quel, `vst_denoise(..., noise_factor=C)`. Il compense un σ mal
 estimé, une stabilisation imparfaite, ou le gain de bruit du démosaïçage.
 
 ### 2.2 Selon le cas
@@ -110,6 +112,7 @@ exactes ; seul le niveau de débruitage change.
 stabilisation avec (a, b) de la recette en vol.**
 
 ```python
+from eoqual.denoising import vst_denoise
 from eoqual.denoising.optimization import optimize_parameters
 
 espace = {
@@ -124,6 +127,8 @@ res = optimize_parameters(
     n_calls=20, n_initial_points=6,
 )
 C = res.best_params["sigma_scale"]
+propre = vst_denoise(autre_rgb, "nl_bayes", gain=1 / b, read_noise_dn=a ** 0.5,
+                     offset_dn=offset, noise_factor=C)
 ```
 
 En ligne de commande : `examples/optimize_parameters.py --method nl_bayes

@@ -146,3 +146,58 @@ def test_invalid_parameters():
         vst.generalized_anscombe(np.ones(3), gain=0.0)
     with pytest.raises(ValueError):
         vst.inverse_generalized_anscombe(np.ones(3), method="wrong")
+
+
+# --- noise_factor (σ dans le domaine stabilisé) -------------------------------
+
+
+def _raw(shape=(64, 64), peak=20.0):
+    signal = astronaut_gray(shape[0])[: shape[0], : shape[1]] * peak
+    return vst.add_poisson_gaussian_noise(signal, 2.0, 0.5, 100.0, seed=SEED)
+
+
+def test_vst_denoise_error_message_points_to_noise_factor():
+    with pytest.raises(ValueError, match="noise_factor"):
+        vst.vst_denoise(_raw(), "nl_means", gain=2.0, sigma=1.3)
+
+
+def test_noise_factor_equals_manual_chain():
+    """noise_factor = C revient à débruiter avec σ = C entre la GAT et son inverse."""
+    raw, g = _raw(), {"gain": 2.0, "read_noise_dn": 0.5, "offset_dn": 100.0}
+    out = vst.vst_denoise(raw, "tv_chambolle", **g, noise_factor=1.36)
+    d = vst.generalized_anscombe(raw, **g)
+    ref = vst.inverse_generalized_anscombe(denoise(d, "tv_chambolle", sigma=1.36), **g)
+    assert np.allclose(out, ref)
+
+
+def test_noise_factor_default_is_one():
+    raw = _raw()
+    a = vst.vst_denoise(raw, "tv_chambolle", gain=2.0, read_noise_dn=0.5, offset_dn=100.0)
+    b = vst.vst_denoise(raw, "tv_chambolle", gain=2.0, read_noise_dn=0.5, offset_dn=100.0, noise_factor=1.0)
+    assert np.array_equal(a, b)
+
+
+@pytest.mark.parametrize("factor", [0.2, 4.0])
+def test_noise_factor_out_of_range_warns(factor):
+    with pytest.warns(UserWarning, match="plage plausible"):
+        vst.vst_denoise(_raw(), "tv_chambolle", gain=2.0, noise_factor=factor)
+
+
+def test_noise_factor_must_be_positive():
+    with pytest.raises(ValueError, match="noise_factor"):
+        vst.vst_denoise(_raw(), "tv_chambolle", gain=2.0, noise_factor=0.0)
+
+
+def test_vst_denoise_color_for_nl_bayes():
+    """Recette d'une image démosaïquée : couleur, nl_bayes, facteur C."""
+    from eoqual.denoising import astronaut_rgb
+
+    signal = astronaut_rgb(48) * 50.0
+    raw = vst.add_poisson_gaussian_noise(signal, 2.0, 0.5, 100.0, seed=SEED)
+    out = vst.vst_denoise(raw, "nl_bayes", gain=2.0, read_noise_dn=0.5, offset_dn=100.0,
+                          noise_factor=1.36, color_mode="yuv")
+    assert out.shape == raw.shape
+    ref = signal / 2.0 + 100.0
+    assert np.mean((out - ref) ** 2) < np.mean((raw - ref) ** 2)
+    with pytest.raises(ValueError):
+        vst.vst_denoise(raw, "nl_means", gain=2.0)

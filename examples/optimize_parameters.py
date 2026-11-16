@@ -39,7 +39,6 @@ import numpy as np
 import eoqual.denoising as d
 from eoqual.denoising.optimization import SEARCH_SPACES, default_n_jobs, load_search_space, optimize_parameters
 from eoqual.denoising.optimization.plotting import plot_images, plot_optimization
-from eoqual.denoising.runner import _resolve
 
 
 def _read(path: Path, color: bool) -> np.ndarray:
@@ -133,14 +132,13 @@ def main() -> int:
     print(f"arguments réutilisables : {res.best_kwargs}")
 
     # Image finale avec les meilleurs paramètres.
-    func = _resolve(args.method)
     if vst:
-        tr = d.generalized_anscombe(noisy, vst["gain"], vst["read_noise_dn"], vst["offset_dn"])
-        denoised = d.inverse_generalized_anscombe(
-            func(tr, **res.best_kwargs), vst["gain"], vst["read_noise_dn"], vst["offset_dn"]
-        )
+        kwargs = dict(res.best_kwargs)
+        noise_factor = kwargs.pop("sigma")  # σ dans le domaine stabilisé (facteur C)
+        denoised = d.vst_denoise(noisy, args.method, **vst, noise_factor=noise_factor, **kwargs)
+        print(f"noise_factor (facteur C) retenu : {noise_factor:.3f}")
     else:
-        denoised = func(noisy, **res.best_kwargs)
+        denoised = d.denoise(noisy, args.method, **res.best_kwargs)
     _write(out / f"{args.method}_denoised.tif", denoised)
     (out / f"{args.method}_best.json").write_text(
         json.dumps(

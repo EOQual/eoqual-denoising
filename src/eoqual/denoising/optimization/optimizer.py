@@ -149,20 +149,28 @@ def _denoise_with(ctx: dict, params: dict) -> np.ndarray:
     méthode travaille dans le domaine transformé (σ = 1, ou ``sigma_scale``
     si cette dimension est optimisée).
     """
-    from ..runner import _resolve
-    from ..vst import generalized_anscombe, inverse_generalized_anscombe
+    import warnings
 
-    # Appel direct de la fonction de la méthode (résolue une fois par appel),
-    # équivalent à runner.denoise(image, method, **kwargs).
-    func = _resolve(ctx["method"])
+    from ..runner import _resolve
+    from ..vst import vst_denoise
+
     kwargs = {**ctx["fixed"], **_to_kwargs(params, ctx["dims"], ctx["sigma"])}
     vst = ctx["vst"]
     if not vst:
-        return func(ctx["noisy"], **kwargs)
+        # Appel direct de la fonction, équivalent à runner.denoise.
+        return _resolve(ctx["method"])(ctx["noisy"], **kwargs)
+    # Mode VST : σ = 1 × sigma_scale dans le domaine stabilisé, c'est-à-dire
+    # le noise_factor de vst_denoise (facteur C après démosaïçage). Les
+    # bornes de l'espace peuvent sortir de la plage plausible : pas
+    # d'avertissement pendant l'exploration.
     g = {k: vst.get(k, 0.0) for k in ("gain", "read_noise_dn", "offset_dn")}
-    d = generalized_anscombe(ctx["noisy"], **g)
-    d_hat = func(d, **kwargs)
-    return inverse_generalized_anscombe(d_hat, **g, method=vst.get("inverse", "exact_unbiased"))
+    noise_factor = kwargs.pop("sigma")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return vst_denoise(
+            ctx["noisy"], ctx["method"], **g, inverse=vst.get("inverse", "exact_unbiased"),
+            noise_factor=noise_factor, **kwargs,
+        )
 
 
 def _evaluate(params: dict) -> tuple[float | None, str, float, int]:

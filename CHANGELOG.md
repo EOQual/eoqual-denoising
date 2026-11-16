@@ -6,6 +6,20 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.2.1 (2026-11-16)
+
+:   -   **`vst_denoise(..., noise_factor=C)`** : σ donné à la méthode
+        dans le domaine stabilisé (défaut 1), pour le facteur
+        C = √κ_Y + 0,2 d'une image démosaïquée ; avertissement hors de
+        [0,5 ; 2,5]. `vst_denoise` accepte aussi une image couleur pour
+        `nl_bayes`. Un argument `sigma` reste refusé, avec un message qui
+        oriente vers `noise_factor`.
+    -   La recette d'une image démosaïquée (`REFERENCE_TECHNIQUE.md` §6.4)
+        utilise `vst_denoise` au lieu d'un enchaînement manuel ;
+        l'optimiseur et les exemples passent aussi par lui.
+    -   `examples/one_method_cli.py` : `--noise-factor` et `--kappa-y`,
+        image couleur en mode stabilisation.
+
 0.2.0 (2026-11-16)
 
 :   -   **Optimisation sur image couleur** : `optimize_parameters`
