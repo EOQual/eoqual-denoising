@@ -393,15 +393,6 @@ def optimize_parameters(
     ValueError
         Paramètres incohérents, ou toutes les évaluations en échec.
     """
-    try:
-        from skopt import Optimizer, gp_minimize
-        from skopt.space import Space
-    except ImportError as exc:
-        raise ImportError(
-            "L'optimisation nécessite 'scikit-optimize'. Installer avec : "
-            'pip install "eoqual-denoising[optim]"'
-        ) from exc
-
     if metric not in METRICS:
         raise ValueError(f"metric doit valoir {METRICS}, reçu '{metric}'.")
     if n_jobs < 1:
@@ -434,6 +425,18 @@ def optimize_parameters(
         space_constraint = declared
     if space_constraint is not None and x0 and not space_constraint(x0[0]):
         raise ValueError("initial_guess ne respecte pas space_constraint.")
+
+    # scikit-optimize n'est importé qu'une fois les arguments vérifiés : une
+    # erreur d'usage (image couleur pour une méthode en niveaux de gris,
+    # métrique inconnue…) est signalée comme telle, extra installé ou non.
+    try:
+        from skopt import Optimizer, gp_minimize
+        from skopt.space import Space
+    except ImportError as exc:
+        raise ImportError(
+            "L'optimisation nécessite 'scikit-optimize'. Installer avec : "
+            'pip install "eoqual-denoising[optim]"'
+        ) from exc
 
     context = {
         "method": method,

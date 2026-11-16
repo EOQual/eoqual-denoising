@@ -180,8 +180,8 @@ def test_failures_are_penalized_not_fatal(pair):
     assert res.best_params == {"wavelet": "db2"}
 
 
-@needs_skopt
 def test_errors(pair):
+    # sans scikit-optimize aussi : les arguments sont vérifiés avant l'import
     clean, noisy = pair
     with pytest.raises(KeyError):
         optimize_parameters(noisy, clean, "restormer")
@@ -321,6 +321,7 @@ def test_color_optimization_nl_bayes(rgb_pair, metric):
 
 
 def test_color_image_rejected_for_gray_method(rgb_pair):
+    # sans scikit-optimize aussi : les arguments sont vérifiés avant l'import
     clean_rgb, noisy_rgb = rgb_pair
     with pytest.raises(ValueError, match="couleur"):
         optimize_parameters(noisy_rgb, clean_rgb, "nl_means", sigma=SIGMA, n_calls=3)
