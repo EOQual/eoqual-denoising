@@ -17,8 +17,8 @@
     {"name": "beta1", "type": "float", "low": 0.8, "high": 1.2},
     // Atténuation de l'étape 2, C_b + β₂σ²I. Article : 1,2 (σ < 50), 1,0 sinon.
     {"name": "beta2", "type": "float", "low": 0.8, "high": 1.5},
-    // Seuil minimal de similarité de l'étape 2 (niveaux² sur [0, 255]). Article : 4.
-    {"name": "tau0", "type": "float", "low": 0.0, "high": 16.0},
+    // Seuil minimal de similarité de l'étape 2 (niveaux² sur [0, 255]). Article : 4, vérifié robuste (REFERENCE_TECHNIQUE.md §4.2) ; l'optimum dépend du contenu (jusqu'à ~30 en couleur).
+    {"name": "tau0", "type": "float", "low": 0.0, "high": 32.0},
     // Critère homogène à l'étape 1 (article : oui).
     {"name": "use_area1", "type": "categorical", "categories": [true, false]},
     // Critère homogène à l'étape 2 (article : non).

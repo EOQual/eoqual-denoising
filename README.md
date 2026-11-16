@@ -170,6 +170,7 @@ Exemples prêts à l'emploi dans `examples/` :
 | `all_methods_overview.py` | comparer les méthodes disponibles et produire une planche |
 | `low_light_vst.py` | stabilisation de variance à faible flux |
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode |
+| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ |
 | `benchmark.py`, `nl_bayes_benchmark.py` | reproduire `BENCHMARK.md` |
 
 ---

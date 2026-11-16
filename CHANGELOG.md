@@ -6,6 +6,16 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.2.2 (2026-11-16)
+
+:   -   **Étude de sensibilité de τ₀** (NL-Bayes) : une règle relative
+        τ₀ = c·σ² a été testée puis écartée en validation indépendante
+        (autres images, autre tirage, couleur) ; τ₀ = 4 de l'article est
+        conservé. Résultats dans `REFERENCE_TECHNIQUE.md` §4.2 ; script
+        reproductible `examples/tau0_study.py`.
+    -   Borne haute de τ₀ dans l'espace de recherche de NL-Bayes portée de
+        16 à 32 (optimum jusqu'à ~30 en couleur).
+
 0.2.1 (2026-11-16)
 
 :   -   **`vst_denoise(..., noise_factor=C)`** : σ donné à la méthode

@@ -207,7 +207,7 @@ regroupement et le réglage de σ sont détaillés au §4.
 | γ | seuil du critère des zones homogènes : écart-type du groupe ≤ γσ ⇒ moyenne | 1,05 | [0,9 ; 1,3] | petit : bruit résiduel dans les aplats ; grand : perte de petits détails |
 | β₁ | atténuation de l'étape 1, C − β₁σ²I | 1,0 | [0,8 ; 1,2] | < 1 : sous-débruitage ; > 1 : sur-lissage |
 | β₂ | atténuation de l'étape 2, C_b + β₂σ²I | 1,2 (σ < 50), 1,0 sinon | [0,8 ; 1,5] | idem, sur le filtre de Wiener |
-| τ₀ | seuil minimal de similarité de l'étape 2 (niveaux²) | 4 | [0 ; 16] | 0 : groupes limités à N₂ ; grand : patchs dissemblables agrégés (tableau 7) |
+| τ₀ | seuil minimal de similarité de l'étape 2 (niveaux²) | 4 | [0 ; 32] | 0 : groupes limités à N₂ ; grand : patchs dissemblables agrégés (tableau 7) |
 | `use_area1`, `use_area2` | critère homogène à chaque étape | oui / non | {oui, non} | tableau 9 de l'article |
 | `sigma_scale` | multiplie σ (pas un terme de l'article) | 1 | [0,5 ; 2] | compense un σ estimé biaisé ; agit sur β·σ² et sur γσ |
 
@@ -684,6 +684,24 @@ de bruit et avec l'échelle (§4.3). Pour repère, deux patchs bruités d'un
 même signal sont à une distance moyenne de 2σ² ; mais à l'étape 2, les
 distances se mesurent sur l'image déjà débruitée, dont le bruit résiduel
 est bien plus faible que σ.
+
+**τ₀ = 4 est conservé : étude de sensibilité.** Une règle relative,
+τ₀ = c·σ² (σ sur l'échelle 0-255), semblait plus logique. Elle a été
+testée (`examples/tau0_study.py`) :
+
+| Étape | Données | τ₀ = 4 : perte moyenne / max face au meilleur τ₀ | τ₀ = 0,005·σ² : perte moyenne / max |
+|---|---|---|---|
+| Ajustement de c | 6 images × 6 σ (gris) + 6 images × 4 flux (stabilisation) | 0,09 / 0,79 dB | 0,04 / 0,30 dB |
+| Validation (c figé) | 5 autres images, autre tirage : gris, stabilisation, couleur `yuv` | 0,02 / 0,10 (gris) ; 0,04 / 0,27 (stab.) ; 0,13 / 0,62 (couleur) | 0,04 / 0,53 ; 0,03 / 0,11 ; 0,16 / 0,74 |
+
+La règle ne tient pas en validation : son gain du premier jeu venait de
+deux images (grands aplats, texture régulière). **Le meilleur τ₀ dépend
+du contenu de l'image plus que de σ**, et τ₀ = 4 est un compromis robuste.
+τ₀ = 0, en revanche, est à proscrire (jusqu'à −6,8 dB sur des aplats à
+faible flux) : le plancher de l'article est utile. Pour adapter τ₀ à un
+capteur ou à un type de scène, l'optimiser sur une image de référence
+(`OPTIMISATION.md` §2.1), en particulier en couleur, où l'écart à
+l'optimum est le plus grand.
 
 ### 4.3 D'où vient la valeur de σ
 
@@ -1184,6 +1202,7 @@ Les méthodes dont l'extra ou le composant externe manque sont sautées
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode (`OPTIMISATION.md`) : journal, meilleurs paramètres, image, figures |
 | `benchmark.py` | benchmark principal (`BENCHMARK.md` §2-3) |
 | `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes (`BENCHMARK.md` §8) |
+| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ (étude du §4.2) |
 
 ### 9.3 Performances indicatives
 
@@ -1241,8 +1260,6 @@ non-régression, pas de benchmark.
 - **DRUNet couleur** : `drunet` est en niveaux de gris ; les poids couleur
   de deepinv (BSD-3-Clause) donnent, après démosaïçage, 0.2 à 0.9 dB de
   plus que NL-Bayes couleur (§6.7).
-- **τ₀ relatif** : exprimer le seuil de regroupement τ₀ de NL-Bayes en
-  multiple de σ², pour qu'il ne dépende plus de l'échelle (§4.2).
 - **Optimisation** : évolutions propres dans `OPTIMISATION.md` §8.
 - **NL-Bayes et NL-Ridge sur GPU** : portage PyTorch du moteur
   vectorisé (mêmes opérations par lots : extraction, `matmul`, `solve`),
@@ -1348,3 +1365,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-11-16 | σ et réorganisation | Chapitre 4 « Le niveau de bruit σ » ajouté : rôle de σ dans chaque formule de NL-Bayes, seuils τ et τ₀ du regroupement, origine de σ et conversion 0-255, modèle (a, b) et stabilisation, facteur C après démosaïçage, réglage par optimisation. Chapitres réordonnés (σ §4, stabilisation §5, image démosaïquée §6 ex-§10, optimisation §7 ex-§5, puis §8 à §11 ex-§6 à §9). Origine du terme VST documentée au §5. Optimisation étendue aux images couleur (`nl_bayes`) et paramètre `sigma_scale0` pour partir de C = √κ_Y + 0,2 ; borne haute de `sigma_scale` de NL-Bayes portée à 2,5 (C atteint 1,8). Correction d'une recommandation antérieure : en mode stabilisation, `sigma_scale` n'est pas superflu, c'est le facteur C (§6.5). |
 | 2026-11-16 | Optimisation séparée | Le chapitre « Optimisation des paramètres » (ex-§7) et le réglage de σ (ex-§4.6, détail du §6.5) passent dans `OPTIMISATION.md` ; les §8 à §11 deviennent §7 à §10. Le cœur de métier (méthodes, σ, stabilisation, image démosaïquée) reste ici. |
 | 2026-11-16 | `noise_factor` (0.2.1) | `vst_denoise` gagne un paramètre `noise_factor` (σ dans le domaine stabilisé, défaut 1, avertissement hors de [0,5 ; 2,5]) et accepte une image couleur pour `nl_bayes` : la recette d'une image démosaïquée (§6.4) passe par lui au lieu d'enchaîner GAT, méthode et inverse à la main. Le refus de `sigma` est conservé (erreur plutôt qu'avertissement), avec un message qui oriente vers `noise_factor`. L'optimiseur et les exemples passent par `vst_denoise`. |
+| 2026-11-16 | Étude de τ₀ | Règle τ₀ = c·σ² testée contre τ₀ = 4. Ajustement (60 cas, gris et stabilisation) : c = 0,005, perte moyenne face au meilleur τ₀ réduite de 0,09 à 0,04 dB. Validation indépendante (62 cas : autres images, autre graine, couleur `yuv`) : la règle fait moins bien que τ₀ = 4 en gris (−0,024 dB en moyenne, −0,53 au pire) et en couleur (−0,036, −0,59 au pire), à peine mieux avec stabilisation (+0,014). Règle abandonnée, τ₀ = 4 conservé ; borne haute de τ₀ dans l'espace de NL-Bayes portée de 16 à 32 (optimum jusqu'à ~30 en couleur). Script : `examples/tau0_study.py`. |

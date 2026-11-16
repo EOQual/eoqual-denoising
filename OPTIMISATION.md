@@ -59,7 +59,7 @@ régler, et comment.
 | (a, b), offset | propriétés du **capteur** | **fixes** : PTC ou recette en vol |
 | `sigma_scale` | ajustement du **niveau** de débruitage | **optimisé** ; c'est C après démosaïçage |
 | k₁, k₂, α, γ, β₁, β₂ | réglages de la **méthode** | optimisés si besoin, gain faible (§3, `BENCHMARK.md` §3) |
-| τ₀ | seuil de regroupement de l'étape 2 | optimisé dans [0 ; 16] |
+| τ₀ | seuil de regroupement de l'étape 2 | optimisé dans [0 ; 32] ; défaut 4 robuste, optimum selon le contenu (`REFERENCE_TECHNIQUE.md` §4.2) |
 
 `sigma_scale` multiplie σ dans le domaine où travaille NL-Bayes : le σ de
 l'image sans stabilisation, 1 avec stabilisation. Dans ce second cas,
@@ -139,8 +139,9 @@ En ligne de commande : `examples/optimize_parameters.py --method nl_bayes
 - **Optimiser (a, b) eux-mêmes** : à réserver à une mesure douteuse, en
   léger ajustement autour d'elle (l'outil ne le propose pas encore,
   §8) ; ce n'est jamais le bon levier pour le démosaïçage (§2.4).
-- **τ₀ proportionnel à σ²**, pour qu'il ne dépende plus de l'échelle :
-  évolution de NL-Bayes envisagée (`REFERENCE_TECHNIQUE.md` §10).
+- **τ₀ proportionnel à σ²** : testée et écartée, l'optimum dépend du
+  contenu de l'image plus que de σ (`REFERENCE_TECHNIQUE.md` §4.2). τ₀
+  s'optimise directement, sur une image de référence.
 
 ## 3. Espaces de recherche et contraintes
 
@@ -159,7 +160,7 @@ Chaque méthode réglable a un espace par défaut (`SEARCH_SPACES`) :
 | `wavelet_dict` | `threshold` [0,3 ; 4]·σ, `level` 1-5 |
 | `bm3d` | `sigma_scale` [0,5 ; 2], profil (`np`, `refilter`, `vn`, `high`) |
 | `nl_ridge`, `nl_ridge_inria` | `sigma_scale`, `p1`, `p2`, `k1`, `k2`, contraintes (linéaire / affine) |
-| `nl_bayes` | `sigma_scale`, `k1`, `k2` (3/5/7), `window_factor` [3 ; 9], `gamma` [0,9 ; 1,3], `beta1` [0,8 ; 1,2], `beta2` [0,8 ; 1,5], `tau0` [0 ; 16], `use_area1`, `use_area2` (détail `REFERENCE_TECHNIQUE.md` §2.6) |
+| `nl_bayes` | `sigma_scale`, `k1`, `k2` (3/5/7), `window_factor` [3 ; 9], `gamma` [0,9 ; 1,3], `beta1` [0,8 ; 1,2], `beta2` [0,8 ; 1,5], `tau0` [0 ; 32], `use_area1`, `use_area2` (détail `REFERENCE_TECHNIQUE.md` §2.6) |
 | `nl_bayes_ipol` | `sigma_scale`, `use_area1`, `use_area2` |
 | `restormer` | aucune (réseau aveugle) |
 

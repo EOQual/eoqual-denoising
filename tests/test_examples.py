@@ -111,3 +111,15 @@ def test_one_method_cli_vst_color_kappa(image_files, tmp_path):
     stdout = run("one_method_cli.py", image_files / "couleur.png", out, "--method", "nl_bayes",
                  "--vst-gain", 2, "--kappa-y", 1.35)
     assert "noise_factor=1.362" in stdout and cv2.imread(str(out)).shape == (64, 64, 3)
+
+
+def test_tau0_study_runs(tmp_path):
+    """Exécution réduite de l'étude τ₀ (un volet) : le rapport est produit."""
+    import ast
+
+    src = (EXAMPLES / "tau0_study.py").read_text(encoding="utf-8")
+    ast.parse(src)  # syntaxe
+    out = tmp_path / "tau0.md"
+    run("tau0_study.py", "--images", "validation", "--parts", "gray", "--size", 64, "--max-cases", 2,
+        "--out", out)
+    assert "Perte face au meilleur" in out.read_text(encoding="utf-8")
