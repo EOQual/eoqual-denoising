@@ -6,6 +6,17 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.3.1 (2026-11-16)
+
+:   -   **`optimize_parameters` vérifie ses arguments avant d'importer
+        scikit-optimize** : une erreur d'usage (image couleur pour une
+        méthode en niveaux de gris, métrique inconnue, formes différentes,
+        méthode sans espace de recherche) est signalée comme telle, même
+        sans l'extra `optim`, au lieu d'être masquée par l'`ImportError`.
+        Les tests correspondants ne dépendent plus de scikit-optimize.
+    -   Extras `neural` et `deep` : eoqual-neural v0.1.1 (correctif
+        d'installation par Poetry ; aucun changement de code).
+
 0.3.0 (2026-11-16)
 
 :   -   **Réseaux de neurones déplacés dans eoqual-neural** : DRUNet,

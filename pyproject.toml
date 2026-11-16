@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "eoqual-denoising"
-version = "0.3.0"
+version = "0.3.1"
 description = "Collection of Earth observation image denoising methods"
 authors = ["Olivier Amram <olivier.amram@free.fr>"]
 maintainers = [
@@ -36,7 +36,7 @@ rich = "*"
 
 # --- Extra "neural" : réseaux de neurones (DRUNet, SwinIR, Restormer,
 # GS-DRUNet), fournis par eoqual-neural (MIT ; PyTorch, deepinv). ---
-eoqual-neural = {git = "https://github.com/EOQual/eoqual-neural.git", tag = "v0.1.0", optional = true}
+eoqual-neural = {git = "https://github.com/EOQual/eoqual-neural.git", tag = "v0.1.1", optional = true}
 
 # --- Extra "deep" : méthodes classiques calculées avec PyTorch / deepinv
 # (EPLL, TGV, wavelet_dict, nl_ridge). deepinv : BSD-3-Clause. Non installé
