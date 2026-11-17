@@ -6,6 +6,11 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.3.2 (2026-11-17)
+
+:   -   **Notation du modèle de bruit alignée sur eoqual-measure** : **σ² = a·L + b**, `a` pente (1/gain), `b` plancher (bruit de lecture²) ; les `a` et `b` de la PTC d'eoqual-measure s'emploient tels quels. Les versions précédentes notaient `var = a + b·L`, lettres inversées.
+        Documentation seulement (`REFERENCE_TECHNIQUE.md` §4.4, §5, §6 ; `OPTIMISATION.md` ; `README.md`) : l'API (`gain`, `read_noise_dn`) ne change pas.
+
 0.3.1 (2026-11-16)
 
 :   -   **`optimize_parameters` vérifie ses arguments avant d'importer

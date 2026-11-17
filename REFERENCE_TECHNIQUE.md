@@ -749,13 +749,14 @@ Sur une image brute de capteur, la **variance** du bruit suit la
 luminance L (niveau d'obscurité soustrait) :
 
 ```
-var(L) = a + b·L        a : plancher (bruit de lecture²)        b : pente (bruit photonique, 1/gain)
+σ²(L) = a·L + b        a : pente (bruit photonique, 1/gain)        b : plancher (bruit de lecture²)
 ```
 
-**Convention, valable dans tout le module (et dans eoqual-demosaicing) :
-a est le plancher, b la pente.** Un bruit stationnaire d'écart-type σ
-s'écrit donc a = σ², b = 0. eoqual-measure note la même droite
-σ² = a·μ + b avec les lettres inversées (§5.1).
+**Convention, commune à tous les modules EOQual (celle d'eoqual-measure,
+σ² = a·μ + b) : a est la pente, b le plancher.** Les `a` et `b` de la PTC
+d'eoqual-measure s'emploient donc tels quels. Un bruit stationnaire
+d'écart-type σ s'écrit a = 0, b = σ². Jusqu'à la version 0.3.1, ce module
+notait `var = a + b·L`, lettres inversées.
 
 Les coefficients `a` et `b` se mesurent : courbe de transfert photonique
 (PTC d'eoqual-measure) ou recette en vol. Le bruit est faible dans les
@@ -795,7 +796,7 @@ une erreur). Le seul écart permis à σ = 1 est explicite : le paramètre
 Le démosaïçage interpole chaque couleur à partir des photosites voisins.
 Le bruit devient corrélé et sa variance en luminance est multipliée par un
 facteur κ_Y propre au démosaïqueur (0,6 à 2,6, §6.3), la forme affine
-étant conservée : `var_Y(L) ≈ κ_Y · (a + b·L)`. La recette (§6.4) :
+étant conservée : `var_Y(L) ≈ κ_Y · (a·L + b)`. La recette (§6.4) :
 
 1. stabiliser avec les (a, b) **du capteur**, inchangés ;
 2. débruiter avec **σ = C** au lieu de 1, `C = √κ_Y + 0,2` (√κ_Y pour la
@@ -851,14 +852,12 @@ Une image brute de capteur suit, pixel par pixel :
 - `offset_dn` = niveau d'obscurité en DN.
 
 La variance vaut σ²(z) = (z̄ − offset)/K + σ_DN² : elle **croît avec le
-signal**. C'est le modèle du §4.4, `var(L) = a + b·L`, avec
-**a = σ_DN²** (plancher) et **b = 1/K** (pente), L = z̄ − offset.
-Attention : eoqual-measure écrit la même droite σ²(μ) = a·μ + b, avec
-les rôles de a et b **inversés** (a pente, b plancher). Pour éviter toute
-confusion, passer par les grandeurs physiques, qui se lisent
-directement sur ses mesures : `measure_ptc(...).gain`,
-`.read_noise_dn`, et le niveau moyen de `measure_dark_frame` pour
-l'offset.
+signal**. C'est le modèle du §4.4, `σ²(L) = a·L + b`, avec
+**a = 1/K** (pente) et **b = σ_DN²** (plancher), L = z̄ − offset : la
+droite de la PTC d'eoqual-measure, mêmes lettres. Les grandeurs
+physiques se lisent aussi directement sur ses mesures :
+`measure_ptc(...).gain`, `.read_noise_dn`, et le niveau moyen de
+`measure_dark_frame` pour l'offset.
 
 Un débruiteur gaussien appliqué tel quel reçoit un σ unique (estimé ou
 fourni) alors que le vrai σ varie dans l'image. Il sur-lisse les zones
@@ -992,18 +991,18 @@ Pour une luminance linéaire normalisée ``L ∈ [0, 1]`` (niveau d'obscurité
 soustrait) :
 
 ```
-var(L) = a + b · L         a = (σ_r / N_sat)²  (plancher : lecture, obscurité)
-                           b = 1 / N_sat        (pente : bruit photonique)
+σ²(L) = a · L + b         a = 1 / N_sat        (pente : bruit photonique)
+                           b = (σ_r / N_sat)²  (plancher : lecture, obscurité)
 ```
 
 avec ``N_sat`` les électrons à pleine échelle et ``σ_r`` le bruit de
 lecture en électrons. C'est le modèle du §5.1, écrit en luminance
-normalisée (le §5.1 note la même droite ``σ² = a·μ + b`` avec les rôles
-de ``a`` et ``b`` inversés). Correspondance avec les fonctions du §5 :
+normalisée, avec les lettres d'eoqual-measure. Correspondance avec les
+fonctions du §5 :
 
 ```python
 from eoqual.denoising.vst import generalized_anscombe, inverse_generalized_anscombe
-gain, read_noise = 1.0 / b, a ** 0.5          # var = a + b·L
+gain, read_noise = 1.0 / a, b ** 0.5          # σ² = a·L + b
 g = generalized_anscombe(L, gain, read_noise)  # bruit d'écart-type ≈ 1
 ```
 
@@ -1043,7 +1042,7 @@ from eoqual.denoising import vst_denoise
 C = 1.35 ** 0.5 + 0.2                  # Hamilton-Adams : κ_Y = 1,35
 rgb_debruitee = vst_denoise(
     rgb, "nl_bayes",                   # image (H, W, 3)
-    gain=1.0 / b, read_noise_dn=a ** 0.5,   # var = a + b·L
+    gain=1.0 / a, read_noise_dn=b ** 0.5,   # σ² = a·L + b
     noise_factor=C, color_mode="yuv",
 )
 ```
@@ -1051,7 +1050,7 @@ rgb_debruitee = vst_denoise(
 En ligne de commande : `examples/one_method_cli.py demosaiquee.tif
 sortie.tif --method nl_bayes --vst-gain … --vst-read-noise … --kappa-y 1.35`.
 
-Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
+Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a·L̄ + b)``, un peu moins
 bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
 
 Mode opératoire complet sur données réelles (unités de ``(a, b)``,
@@ -1386,3 +1385,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-11-16 | Étude de τ₀ | Règle τ₀ = c·σ² testée contre τ₀ = 4. Ajustement (60 cas, gris et stabilisation) : c = 0,005, perte moyenne face au meilleur τ₀ réduite de 0,09 à 0,04 dB. Validation indépendante (62 cas : autres images, autre graine, couleur `yuv`) : la règle fait moins bien que τ₀ = 4 en gris (−0,024 dB en moyenne, −0,53 au pire) et en couleur (−0,036, −0,59 au pire), à peine mieux avec stabilisation (+0,014). Règle abandonnée, τ₀ = 4 conservé ; borne haute de τ₀ dans l'espace de NL-Bayes portée de 16 à 32 (optimum jusqu'à ~30 en couleur). Script : `examples/tau0_study.py`. |
 | 2026-11-16 | Réseaux dans eoqual-neural (0.3.0) | DRUNet, SwinIR, Restormer et GS-DRUNet passent dans le nouveau module eoqual-neural (réseaux rangés par rôle, poids et PyTorch en un seul endroit). `backends/neural.py` adapte le contrat d'eoqual-denoising ; anciens chemins (`backends/drunet/deepinv_impl.py`, `backends/deepinv_zoo/models.py`) conservés en renvoi ; extra `neural` créé, `deep` le contient pour compatibilité. EPLL, TGV et `wavelet_dict` restent ici : ce ne sont pas des réseaux. Sorties identiques (tests inchangés). |
 | 2026-11-16 | Arguments avant scikit-optimize (0.3.1) | `optimize_parameters` importait scikit-optimize avant de vérifier ses arguments : sans l'extra `optim`, une image couleur passée à une méthode en niveaux de gris levait une `ImportError` au lieu de l'erreur attendue. L'import vient maintenant après les contrôles ; `test_color_image_rejected_for_gray_method` et `test_errors` ne dépendent plus de scikit-optimize. eoqual-neural épinglé en v0.1.1. |
+| 2026-11-17 | Notation du bruit (0.3.2) | Modèle de bruit noté σ² = a·L + b (a pente, b plancher), comme eoqual-measure : les `a`, `b` de sa PTC s'emploient tels quels. Le module notait `var = a + b·L`, lettres inversées, ce qui obligeait à les permuter. Documentation et exemples seulement ; API inchangée (`gain`, `read_noise_dn`). Même changement dans eoqual-demosaicing 0.2.1 et eoqual-deconvolution 0.6.2. |

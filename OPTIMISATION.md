@@ -147,12 +147,12 @@ espace = {
 res = optimize_parameters(
     rgb_bruite, rgb_reference, "nl_bayes",           # images (H, W, 3), en DN
     search_space=espace,
-    vst={"gain": 1 / b, "read_noise_dn": a ** 0.5, "offset_dn": offset},  # var = a + b·L
+    vst={"gain": 1 / a, "read_noise_dn": b ** 0.5, "offset_dn": offset},  # σ² = a·L + b
     sigma_scale0=1.35 ** 0.5 + 0.2,                   # départ C = √κ_Y + 0,2
     n_calls=20, n_initial_points=6,
 )
 C = res.best_params["sigma_scale"]
-propre = vst_denoise(autre_rgb, "nl_bayes", gain=1 / b, read_noise_dn=a ** 0.5,
+propre = vst_denoise(autre_rgb, "nl_bayes", gain=1 / a, read_noise_dn=b ** 0.5,
                      offset_dn=offset, noise_factor=C)
 ```
 
