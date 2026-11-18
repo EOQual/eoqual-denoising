@@ -215,11 +215,14 @@ def test_initial_guess_reproduces_method_defaults(pair):
     from eoqual.denoising.optimization.optimizer import _to_kwargs
 
     clean, noisy = pair
+    # Seul écart voulu : nl_bayes part de N₂ = 30 (article en couleur ; 60 en gris à k₂ = 5),
+    # meilleur sur images texturées dans les deux cas (NL_BAYES.md §12.1).
+    departures = {"nl_bayes": {"N2": 30}}
     for method in ("bilateral", "nl_means", "tv_chambolle", "tv_bregman", "wavelet", "nl_bayes"):
         space = SEARCH_SPACES[method]
-        kwargs = _to_kwargs(space["initial_guess"], space["search_space"], SIGMA)
+        kwargs = {**space.get("fixed", {}), **_to_kwargs(space["initial_guess"], space["search_space"], SIGMA)}
         a = _resolve(method)(noisy, **kwargs)
-        b = _resolve(method)(noisy, sigma=SIGMA)
+        b = _resolve(method)(noisy, sigma=SIGMA, **departures.get(method, {}))
         assert np.allclose(a, b), method
 
 

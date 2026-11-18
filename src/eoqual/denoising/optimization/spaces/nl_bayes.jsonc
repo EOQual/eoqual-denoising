@@ -1,27 +1,24 @@
 {
   // Espace de recherche de « nl_bayes » — chargé par optimization/search_spaces.py.
-  // NL-Bayes natif (MIT). 7 dimensions : budget 40-60, n_initial_points ≈ 15-20. Point de départ = article pour σ < 50 ([0, 255]), niveaux de gris. Imbrications gérées par la méthode : N suit k (30/60/90), fenêtre n = window_factor × k, N ≥ k² + 1. Voir REFERENCE_TECHNIQUE.md §2.6.
+  // NL-Bayes natif (MIT). 3 dimensions, classées par les études de sensibilité (NL_BAYES.md §11 et §12.1) :
+  // budget 15-25 évaluations, n_initial_points ≈ 6-8. Point de départ = article (β₂ = 1,2).
   // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
   "search_space": [
-    // Multiplie σ : compense un σ estimé biaisé ; après démosaïçage, c'est le facteur C = √κ_Y + 0.2 (jusqu'à 1,8). Agit sur β·σ² et γσ.
-    // β₁, β₂ et γ ne sont PAS dans l'espace : multiplier σ par s équivaut exactement à multiplier β₁, β₂ par s² et γ par s
-    // (vérifié : sorties identiques). Optimiser les quatre ajoute une direction sans effet. On garde sigma_scale (un seul levier,
-    // commun à toutes les méthodes, interprétable comme le facteur C) et β₁, β₂, γ à leurs valeurs de l'article : γ = 1,05 et β₁ = 1 quel que
-    // soit σ (l'article ne les lie pas à σ ; c'est le seuil γσ qui suit σ), β₂ = 1,2 si σ < 50, sinon 1. Voir OPTIMISATION.md §2.3.
+    // 1. Multiplie σ, donc β₁σ², β₂σ² et le seuil homogène γσ ensemble. Sans stabilisation : corrige un σ estimé biaisé.
+    // Après stabilisation (σ = 1) : niveau réel du bruit dans l'image débruitée, 1 sur une mosaïque brute, ≈ √κ_Y après
+    // démosaïçage (1,1 mesuré pour Hamilton-Adams, NL_BAYES.md §11.6). Départ après démosaïçage (sigma_scale0) : entre √κ_Y et C = √κ_Y + 0,2.
     {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.5},
-    // Taille de patch, étape 1 (article : 5 en gris, 7 à fort bruit). Fixe aussi N₁ et n₁.
-    {"name": "k1", "type": "categorical", "categories": [3, 5, 7]},
-    // Taille de patch, étape 2.
-    {"name": "k2", "type": "categorical", "categories": [3, 5, 7]},
-    // α, fenêtre de recherche n = α·k (article : 7). Plus grand : meilleurs groupes, plus lent.
-    {"name": "window_factor", "type": "float", "low": 3.0, "high": 9.0},
-    // Seuil minimal de similarité de l'étape 2 (niveaux² sur [0, 255]). Article : 4, vérifié robuste (REFERENCE_TECHNIQUE.md §4.2) ; l'optimum dépend du contenu (jusqu'à ~30 en couleur).
-    {"name": "tau0", "type": "float", "low": 0.0, "high": 32.0},
-    // Critère homogène à l'étape 1 (article : oui).
-    {"name": "use_area1", "type": "categorical", "categories": [true, false]},
-    // Critère homogène à l'étape 2 (article : non).
-    {"name": "use_area2", "type": "categorical", "categories": [true, false]},
+    // 2. Atténuation de l'étape 2 relativement à l'étape 1 (β₁ = 1 fixé) : β₂σ² est la variance de bruit supposée par le
+    // filtre final. Optimum mesuré 0,8-1,0 quand σ est juste, plus bas si σ est surestimé. Redondant avec sigma_scale le long
+    // de β₂·σ² ≈ constant (crête, PSNR à 0,06 dB près) ; à faible flux, les zones sombres préfèrent σ au niveau réel et β₂ bas (§11.6).
+    {"name": "beta2", "type": "float", "low": 0.4, "high": 1.5},
+    // 3. Taille des groupes de l'étape 2. Plus petit que l'article sur images texturées à fort bruit ; dans les zones plates,
+    // le groupe dépasse N₂ de toute façon (τ₀, §11.7). Porté à k₂² + 1 au moins par la méthode.
+    {"name": "N2", "type": "int", "low": 15, "high": 90},
   ],
-  // Point de départ (évalué en premier) : réglages par défaut de la méthode.
-  "initial_guess": {"sigma_scale": 1.0, "k1": 5, "k2": 5, "window_factor": 7.0, "tau0": 4.0, "use_area1": true, "use_area2": false},
+  // Point de départ (évalué en premier) : réglages de l'article à faible bruit.
+  "initial_guess": {"sigma_scale": 1.0, "beta2": 1.2, "N2": 30},
+  // Fixés explicitement, pour qu'aucun palier de l'article ne bascule quand sigma_scale fait varier σ (NL_BAYES.md §6.2).
+  // Effets faibles ou redondants (§12.1). k₁, k₂ et N₁ suivent la règle de l'article (5 en gris, 3 en couleur à faible bruit).
+  "fixed": {"beta1": 1.0, "gamma": 1.05, "tau0": 4.0, "window_factor": 7.0, "use_area1": true, "use_area2": false},
 }

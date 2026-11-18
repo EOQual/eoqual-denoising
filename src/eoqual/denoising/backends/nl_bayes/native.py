@@ -37,7 +37,7 @@ Accélération (« paste ») : un patch utilisé dans un groupe n'est plus pris
 comme référence (il peut encore être estimé dans d'autres groupes).
 
 Choix d'implémentation non fixés par l'article (documentés dans
-REFERENCE_TECHNIQUE.md §2.6) : fenêtre de recherche rabattue à
+NL_BAYES.md §9) : fenêtre de recherche rabattue à
 l'intérieur de l'image près des bords ; covariance de l'étape 2 centrée
 sur la moyenne des patchs de u_basic ; critère homogène de l'étape 2
 (optionnel) évalué sur le groupe bruité ; matrice singulière → patchs
@@ -266,7 +266,7 @@ def nl_bayes_denoise(
         ``"yuv"`` (défaut, choix de l'article : étape 1 en Y₀U₀V₀ groupée
         sur Y₀, étape 2 en RGB), ``"rgb"`` (deux étapes en RGB, groupes
         communs aux 3 canaux), ``"channel"`` (canal par canal, comme 3
-        images en niveaux de gris). Voir REFERENCE_TECHNIQUE.md §2.6.
+        images en niveaux de gris). Voir NL_BAYES.md §8.
     engine : {"vectorized", "loop"}
         ``"vectorized"`` (défaut) : calcul par lots, références sur une
         grille de pas ``step``. ``"loop"`` : version fidèle à l'article

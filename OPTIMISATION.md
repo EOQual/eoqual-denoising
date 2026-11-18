@@ -58,9 +58,7 @@ régler, et comment.
 |---|---|---|
 | (a, b), offset | propriétés du **capteur** | **fixes** : PTC ou recette en vol |
 | `sigma_scale` | ajustement du **niveau** de débruitage | **optimisé** ; c'est C après démosaïçage |
-| k₁, k₂, α | réglages de la **méthode** | optimisés si besoin, gain faible (§3, `BENCHMARK.md` §3) |
-| γ, β₁, β₂ | réglages de la **méthode**, liés à σ | **fixes** (article) : redondants avec `sigma_scale` (§2.3) |
-| τ₀ | seuil de regroupement de l'étape 2 | optimisé dans [0 ; 32] ; défaut 4 robuste, optimum selon le contenu (`REFERENCE_TECHNIQUE.md` §4.2) |
+| autres paramètres | réglages de la **méthode** | optimisés si besoin, gain souvent faible (§3, `BENCHMARK.md` §3) ; pour NL-Bayes, lesquels régler et pourquoi : [NL_BAYES.md](NL_BAYES.md) §12 |
 
 `sigma_scale` multiplie σ dans le domaine où travaille NL-Bayes : le σ de
 l'image sans stabilisation, 1 avec stabilisation. Dans ce second cas,
@@ -79,38 +77,15 @@ estimé, une stabilisation imparfaite, ou le gain de bruit du démosaïçage.
 
 ### 2.3 Redondances et budget
 
-**Redondance σ, β, γ.** Dans NL-Bayes, σ n'intervient qu'à trois
-endroits : β₁σ² (étape 1), β₂σ² (étape 2) et γσ (critère des zones
-homogènes). Multiplier σ par s revient donc **exactement** à multiplier
-β₁ et β₂ par s² et γ par s : à tailles de patch fixées, les deux réglages
-donnent la même image au bit près (vérifié sur le moteur natif). τ₀, lui,
-est un seuil absolu et n'en dépend pas.
+**Redondance avec les paramètres de la méthode.** Quand une méthode
+utilise σ multiplié par un de ses propres paramètres, multiplier σ par
+`sigma_scale` revient à changer ce paramètre : les deux ne doivent pas
+être optimisés ensemble sans précaution. C'est le cas de NL-Bayes (β·σ²,
+γσ) : analyse et recommandation dans [NL_BAYES.md](NL_BAYES.md) §7.3 et
+§12.
 
-Conséquence : optimiser à la fois `sigma_scale`, β₁, β₂ et γ, c'est
-chercher dans 4 dimensions qui n'en font que 3. Toute la droite
-(s, β₁·s⁻², β₂·s⁻², γ·s⁻¹) donne le même résultat : l'optimiseur y perd
-des évaluations, et la valeur trouvée pour `sigma_scale` n'a plus de
-sens (elle dépend des β et γ tirés en même temps).
-
-Il faut donc choisir l'un des deux réglages, jamais les deux :
-
-- **`sigma_scale` seul, β₁, β₂, γ fixés à l'article** (choix retenu dans
-  l'espace par défaut). Un seul levier au lieu de trois, commun à toutes
-  les méthodes, interprétable : c'est le facteur C après démosaïçage, et
-  la valeur trouvée se réutilise telle quelle comme `noise_factor` de
-  `vst_denoise`.
-- **β₁, β₂, γ libres, `sigma_scale` = 1.** Trois degrés de liberté : en
-  plus du niveau global, les rapports entre β₁, β₂ et γ. Le gain mesuré
-  est faible (`BENCHMARK.md` §3) et le réglage n'a pas d'interprétation
-  physique.
-
-Pourquoi `sigma_scale` existe-t-il, alors ? Parce que beaucoup de méthodes
-n'ont pas de β ni de γ (BM3D, DRUNet, EPLL, ondelettes…) : `sigma_scale`
-y est le seul moyen d'ajuster le niveau de débruitage. Dans NL-Bayes, il
-ne fait que regrouper β₁, β₂ et γ en un seul réglage.
-
-**Budget.** 15 à 25 évaluations pour `sigma_scale` seul ; 40 à 60 pour
-les 7 dimensions de NL-Bayes. Toujours valider le réglage sur une autre
+**Budget.** 15 à 25 évaluations pour `sigma_scale` seul, autant pour
+les 3 dimensions de NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §12). Toujours valider le réglage sur une autre
 image que celle qui a servi à l'optimiser (§6).
 
 ### 2.4 Image démosaïquée : optimiser C, pas (a, b)
@@ -147,12 +122,12 @@ espace = {
 res = optimize_parameters(
     rgb_bruite, rgb_reference, "nl_bayes",           # images (H, W, 3), en DN
     search_space=espace,
-    vst={"gain": 1 / a, "read_noise_dn": b ** 0.5, "offset_dn": offset},  # σ² = a·L + b
+    vst={"gain": 1 / b, "read_noise_dn": a ** 0.5, "offset_dn": offset},  # σ² = a + b·L
     sigma_scale0=1.35 ** 0.5 + 0.2,                   # départ C = √κ_Y + 0,2
     n_calls=20, n_initial_points=6,
 )
 C = res.best_params["sigma_scale"]
-propre = vst_denoise(autre_rgb, "nl_bayes", gain=1 / a, read_noise_dn=b ** 0.5,
+propre = vst_denoise(autre_rgb, "nl_bayes", gain=1 / b, read_noise_dn=a ** 0.5,
                      offset_dn=offset, noise_factor=C)
 ```
 
@@ -164,9 +139,7 @@ En ligne de commande : `examples/optimize_parameters.py --method nl_bayes
 - **Optimiser (a, b) eux-mêmes** : à réserver à une mesure douteuse, en
   léger ajustement autour d'elle (l'outil ne le propose pas encore,
   §8) ; ce n'est jamais le bon levier pour le démosaïçage (§2.4).
-- **τ₀ proportionnel à σ²** : testée et écartée, l'optimum dépend du
-  contenu de l'image plus que de σ (`REFERENCE_TECHNIQUE.md` §4.2). τ₀
-  s'optimise directement, sur une image de référence.
+- **τ₀ proportionnel à σ²** (NL-Bayes) : testée et écartée ([NL_BAYES.md](NL_BAYES.md) §11.3).
 
 ## 3. Espaces de recherche et contraintes
 
@@ -185,7 +158,7 @@ Chaque méthode réglable a un espace par défaut (`SEARCH_SPACES`) :
 | `wavelet_dict` | `threshold` [0,3 ; 4]·σ, `level` 1-5 |
 | `bm3d` | `sigma_scale` [0,5 ; 2], profil (`np`, `refilter`, `vn`, `high`) |
 | `nl_ridge`, `nl_ridge_inria` | `sigma_scale`, `p1`, `p2`, `k1`, `k2`, contraintes (linéaire / affine) |
-| `nl_bayes` | `sigma_scale`, `k1`, `k2` (3/5/7), `window_factor` [3 ; 9], `tau0` [0 ; 32], `use_area1`, `use_area2` ; β₁, β₂, γ fixés (§2.3, détail `REFERENCE_TECHNIQUE.md` §2.6) |
+| `nl_bayes` | `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90] ; β₁, γ, τ₀, α, `use_area1`, `use_area2` fixés ([NL_BAYES.md](NL_BAYES.md) §12) |
 | `nl_bayes_ipol` | `sigma_scale`, `use_area1`, `use_area2` |
 | `restormer` | aucune (réseau aveugle) |
 

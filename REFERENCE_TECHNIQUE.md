@@ -34,7 +34,7 @@ lui-même, comme celui de tous les paramètres, est dans `OPTIMISATION.md`.
 | `tv_chambolle` | variationnel | variation totale (ROF), solveur dual de Chambolle | §2.3 |
 | `tv_bregman` | variationnel | variation totale (ROF), solveur split Bregman | §2.4 |
 | `wavelet` | transformée | seuillage des coefficients d'ondelettes | §2.5 |
-| `nl_bayes` | non local, 2 étapes | estimateur bayésien gaussien sur groupes de patchs ; couleur | §2.6 |
+| `nl_bayes` | non local, 2 étapes | estimateur bayésien gaussien sur groupes de patchs ; couleur | §2.6, [NL_BAYES.md](NL_BAYES.md) |
 | `nl_ridge` | non local, 2 étapes | combinaisons linéaires de patchs, poids en forme fermée (SURE puis ridge) | §2.7 |
 | `drunet` | réseau | U-Net résiduel conditionné par σ | §3.1 |
 | `swinir` | réseau | transformeur à fenêtres glissantes, poids par niveau de bruit | §3.2 |
@@ -173,129 +173,18 @@ vectorisé, couleur) — implémentation originale numpy, sans dépendance.
 Lebrun, Buades & Morel (2013), **seule source utilisée** (clean-room :
 aucun code consulté, voir `THIRD_PARTY_LICENSES.md` §2.1).
 
-#### Algorithme
+**Principe** : pour chaque patch, les patchs semblables sont regroupés ;
+le groupe est modélisé par une loi gaussienne (moyenne et covariance) et
+chaque patch est estimé par un filtre de Wiener. Deux étapes : la
+seconde forme ses groupes et sa covariance sur le résultat de la
+première. Couleur traitée dans l'espace Y₀U₀V₀ de l'article.
 
-Deux étapes de même structure :
+**Résultats** : 32,42 dB à σ = 0,1 sur le benchmark principal, au niveau
+de BM3D (32,38) et de NL-Ridge.
 
-1. **Étape 1** — pour chaque patch de référence k₁×k₁, on regroupe ses
-   N₁ plus proches voisins (distance quadratique moyenne par pixel) dans
-   une fenêtre n₁×n₁. Si l'écart-type du groupe est ≤ γσ (zone homogène,
-   formule 10), tous les patchs du groupe prennent la valeur moyenne du
-   groupe. Sinon, chaque patch est estimé par l'estimateur bayésien
-   gaussien Q = P̄ + (C − β₁σ²I)C⁻¹(Q̃ − P̄) (formule 12), avec P̄ et C la
-   moyenne et la covariance du groupe.
-2. **Étape 2** — le regroupement se fait sur l'estimée u_basic de
-   l'étape 1. Tous les patchs à distance ≤ τ = max(τ₀, d_N₂) sont gardés
-   (plus nombreux dans les zones homogènes). La covariance vient des
-   patchs de u_basic (oracle), la moyenne des patchs bruités, et
-   Q = P̄ + C_b(C_b + β₂σ²I)⁻¹(Q̃ − P̄) (formule 15) : un filtre de Wiener
-   collaboratif.
-
-Les estimées sont agrégées sans pondération.
-
-#### Les paramètres, leurs imbrications et leurs domaines de recherche
-
-σ s'entend sur l'échelle [0, 255] (l'image y est ramenée par
-`data_range`). Le rôle de σ dans chaque formule, le seuil τ₀ du
-regroupement et le réglage de σ sont détaillés au §4.
-
-| Terme | Rôle | Article (gris) | Domaine de recherche | Effet si trop petit / trop grand |
-|---|---|---|---|---|
-| k₁, k₂ | côté des patchs (étapes 1 et 2) ; dimension du modèle gaussien d = k² | 5 (σ < 50), 7 au-delà | {3, 5, 7} | petit : peu de structure, sensible au bruit ; grand : groupes moins similaires, covariance d×d mal estimée |
-| N₁, N₂ | nombre de patchs du groupe (étape 2 : minimum avant le seuil τ) | 30 / 60 / 90 pour k = 3 / 5 / 7 | suit k (règle de l'article) | petit : covariance singulière ou bruitée ; grand : patchs moins similaires |
-| n₁, n₂ (= α·k) | côté de la fenêtre de recherche | α = 7 | `window_factor` α ∈ [3 ; 9] | petit : groupes pauvres ; grand : plus lent, gain faible (tableau 6) |
-| γ | seuil du critère des zones homogènes : écart-type du groupe ≤ γσ ⇒ moyenne | 1,05, quel que soit σ | fixé à 1,05 (constante de l'article ; redondant avec `sigma_scale`) | petit : bruit résiduel dans les aplats ; grand : perte de petits détails |
-| β₁ | atténuation de l'étape 1, C − β₁σ²I | 1,0 | fixé à 1,0 (idem) | < 1 : sous-débruitage ; > 1 : sur-lissage |
-| β₂ | atténuation de l'étape 2, C_b + β₂σ²I | 1,2 (σ < 50), 1,0 sinon | non optimisé : règle de l'article, appliquée au σ après `sigma_scale` | idem, sur le filtre de Wiener |
-| τ₀ | seuil minimal de similarité de l'étape 2 (niveaux²) | 4 | [0 ; 32] | 0 : groupes limités à N₂ ; grand : patchs dissemblables agrégés (tableau 7) |
-| `use_area1`, `use_area2` | critère homogène à chaque étape | oui / non | {oui, non} | tableau 9 de l'article |
-| `sigma_scale` | multiplie σ (pas un terme de l'article) | 1 | [0,5 ; 2,5] | compense un σ estimé biaisé ; agit sur β·σ² et sur γσ |
-
-**Imbrications** (appliquées par `resolve_parameters`) :
-
-- **N dépend de k** : la covariance d'un groupe est une matrice k²×k²,
-  inversible seulement si N > k². D'où la règle N = 30 / 60 / 90 pour
-  k = 3 / 5 / 7 (l'article l'impose pour éviter les matrices
-  singulières, §4.6). Changer k sans fixer N applique cette règle, et N
-  est toujours porté à au moins k² + 1.
-- **n dépend de k** : la fenêtre est n = α·k, de sorte que le nombre de
-  candidats (n²) croît avec la taille des patchs. Changer k (ou α)
-  recalcule n.
-- **σ, β et γ agissent ensemble** : β·σ² est la variance de bruit
-  retirée à la covariance, et γσ le seuil d'homogénéité. Multiplier σ
-  par `sigma_scale` revient **exactement** à multiplier β₁, β₂ par
-  `sigma_scale`² et γ par `sigma_scale` (même image au bit près). D'où
-  l'espace par défaut : `sigma_scale` optimisé, β₁, β₂, γ fixés à
-  l'article (`OPTIMISATION.md` §2.3).
-- **k et σ** : l'article fait croître k avec le bruit (paliers à 50 et
-  70). Un réglage optimisé à un σ donné ne se transpose pas tel quel à un
-  autre niveau de bruit.
-
-Les 7 dimensions optimisées (`sigma_scale`, k₁, k₂, α, τ₀, `use_area1`,
-`use_area2`) sont initialisées dans `optimization/spaces/nl_bayes.jsonc`
-(point de départ = article, σ < 50, niveaux de gris). Budget conseillé :
-40 à 60 évaluations, dont 15 à 20 aléatoires.
-
-#### Deux moteurs
-
-- **`engine="vectorized"`** (défaut) : références sur une **grille** de
-  pas `step` (3 par défaut, comme BM3D) au lieu de l'astuce « paste »
-  de l'article, qui est séquentielle par nature (un patch utilisé n'est
-  plus référence). Pour un lot de références : extraction des fenêtres,
-  distances, sélection des voisins, une matrice de filtrage d×d par
-  groupe (A = I − β₁σ²C⁻¹ à l'étape 1, A = C_b(C_b + β₂σ²I)⁻¹ à l'étape 2)
-  appliquée à tout le groupe par un seul produit, agrégation par
-  `bincount` restreinte aux positions touchées. À l'étape 2, les groupes
-  sont traités par paquets de taille voisine (médiane 60, mais jusqu'à la
-  fenêtre entière dans les aplats). Les lots sont répartis sur
-  `n_threads` fils (min(cœurs, 8) par défaut ; résultat indépendant du
-  nombre de fils).
-- **`engine="loop"`** : version fidèle à l'article (astuce « paste »),
-  niveaux de gris ou couleur canal par canal.
-
-Sur 512×256 (`BENCHMARK.md` §8), le moteur vectorisé au pas 3 est
-~1,7 fois plus rapide que la boucle à qualité égale (32,42 contre
-32,39 dB à σ = 0,1) ; le pas 4 est ~2,8 fois plus rapide pour −0,03 dB ;
-le pas 2 gagne +0,06 dB pour un temps comparable à la boucle.
-
-#### Couleur
-
-`color_mode` (image (H, W, 3), σ identique sur les trois canaux) :
-
-- **`"yuv"`** (défaut, choix de l'article, §3.3-3.4 et tableau 8) :
-  étape 1 dans l'espace Y₀U₀V₀ rendu orthonormé (σ conservé), groupes
-  formés sur Y₀ seul et appliqués à U₀ et V₀, filtrage canal par canal ;
-  retour en RGB ; étape 2 en RGB, groupes formés sur la distance moyenne
-  des trois canaux de u_basic, filtrage canal par canal ;
-- **`"rgb"`** : les deux étapes en RGB, groupes communs aux trois canaux ;
-- **`"channel"`** : chaque canal débruité indépendamment, comme une image
-  en niveaux de gris.
-
-Paramètres : tableau §4.8 de l'article (patchs de 3 pour σ < 20) pour
-`"yuv"` et `"rgb"` ; profil niveaux de gris pour `"channel"`.
-
-Résultat (`BENCHMARK.md` §8, astronaut RGB 512×256) : `"yuv"` est le
-meilleur à tous les niveaux de bruit (33,07 dB à σ = 0,1, contre 32,77
-pour `"rgb"` et 32,23 pour `"channel"`), et le plus rapide (2,5 fois
-plus que `"channel"`). Le regroupement sur la luminance, moins bruitée
-car moyenne des trois canaux, donne de meilleurs groupes ; les canaux de
-chrominance, plus réguliers, profitent de groupes communs.
-
-#### Choix non fixés par l'article
-
-Fenêtre de recherche rabattue à l'intérieur de l'image près des bords ;
-covariance de l'étape 2 centrée sur la moyenne des patchs de u_basic ;
-critère homogène de l'étape 2 (optionnel) évalué sur le groupe bruité ;
-covariance singulière → patchs laissés inchangés (remarque §3.3). Calcul
-en flottants sur l'échelle [0, 255], sans quantification.
-
-#### Résultats et limites
-
-32,42 dB à σ = 0,1 sur le benchmark principal (moteur vectorisé), au
-niveau de BM3D (32,38) et de NL-Ridge. Face à l'exécutable IPOL : à
-égalité sur 256×256 (±0,1 dB), +0,1 à +0,4 dB sur 512×256. Limite : numpy
-sur CPU ; un portage PyTorch (GPU) serait le prochain gain de vitesse
-(§10).
+**Tout le détail** — mathématiques (covariance, filtre de Wiener), rôle de
+chaque paramètre, place de σ, couleur et images démosaïquées, moteurs,
+études de sensibilité et réglage : **[NL_BAYES.md](NL_BAYES.md)**.
 
 ### 2.7 `nl_ridge` — NL-Ridge, réimplémentation MIT
 
@@ -550,12 +439,7 @@ référence. Utile pour comparer ; `nl_bayes` est préférable en usage
 courant (MIT, sans composant externe, sans quantification, meilleur
 PSNR en niveaux de gris : 32,45 contre 32,02 dB).
 
-Pour chaque groupe de patchs similaires, estimateur bayésien (MAP) sous
-hypothèse gaussienne : moyenne et covariance du groupe estimées sur
-l'image bruitée (étape 1) puis sur l'estimée de l'étape 1 (étape 2), et
-filtrage de Wiener du groupe. Le « critère des zones homogènes »
-(`use_area1`, `use_area2`) remplace le groupe par sa moyenne quand sa
-variance est compatible avec le seul bruit.
+Méthode et paramètres : [NL_BAYES.md](NL_BAYES.md).
 
 **Mise en place** : télécharger l'archive `nl-bayes_20130617.tar.gz` de
 https://www.ipol.im/pub/art/2013/16/, installer libpng et fftw3, compiler
@@ -589,12 +473,12 @@ niveaux de gris.
 
 ## 4. Le niveau de bruit σ
 
-Ce chapitre rassemble tout ce qui concerne σ : ce qu'il représente, où il
-intervient dans le calcul (en prenant NL-Bayes comme exemple, la méthode
-qui l'utilise le plus), d'où vient sa valeur, ce qu'il devient avec la
-stabilisation de variance et après un démosaïçage, et comment le régler
-par optimisation. Les autres méthodes l'utilisent de façon plus simple
-(un seuil ou un poids proportionnel à σ, §2-3).
+Ce chapitre rassemble ce qui concerne σ pour toutes les méthodes : ce
+qu'il représente, comment les méthodes s'en servent, d'où vient sa
+valeur, ce qu'il devient avec la stabilisation de variance et après un
+démosaïçage, et comment le régler par optimisation. Ce qui est propre à
+NL-Bayes (place exacte de σ dans ses formules, seuil τ₀, redondance avec
+β et γ) est dans [NL_BAYES.md](NL_BAYES.md) §7.
 
 ### 4.1 Ce que σ représente
 
@@ -618,100 +502,22 @@ Deux cas réels sortent de ce modèle et sont traités à part :
 | Image brute de capteur | la variance du bruit croît avec la luminance (bruit photonique) | stabilisation de variance (§4.4, §5) |
 | Image démosaïquée | le bruit est corrélé entre pixels et entre canaux, et amplifié en luminance | facteur C (§4.5, §6) |
 
-### 4.2 Où σ intervient dans NL-Bayes
+### 4.2 Comment les méthodes se servent de σ
 
-**Notations.** Un groupe est un ensemble de patchs (carrés de k×k pixels)
-jugés semblables ; chaque patch est vu comme un vecteur de k² valeurs.
-
-| Symbole | Signification |
+| Famille | Usage de σ |
 |---|---|
-| `σ` | écart-type du bruit, sur l'échelle 0-255 (§4.3) |
-| `Q̃` | un patch bruité du groupe |
-| `Q` | son estimation débruitée |
-| `P̄` | moyenne des patchs bruités du groupe |
-| `C` | covariance des patchs bruités du groupe (matrice k² × k²) |
-| `C_b` | même covariance, calculée sur l'image issue de l'étape 1 |
-| `I` | matrice identité k² × k² |
-| `β₁`, `β₂` | coefficients d'atténuation (article : 1,0 et 1,2) |
-| `γ` | seuil des zones homogènes (article : 1,05) |
-| `d` | distance entre deux patchs : moyenne, sur les k² pixels, du carré de leur différence |
-| `τ`, `τ₀`, `d_N` | seuils de regroupement de l'étape 2 (ci-dessous) |
+| filtres et méthodes variationnelles (`bilateral`, `nl_means`, `tv_*`, `tgv`) | un poids ou un seuil proportionnel à σ (espaces de recherche en multiples de σ, `OPTIMISATION.md` §3) |
+| ondelettes (`wavelet`, `wavelet_dict`) | seuil des coefficients proportionnel à σ |
+| `bm3d` | seuil proportionnel à σ (étape 1), σ² comme variance du bruit dans le filtre de Wiener (étape 2) |
+| `nl_bayes`, `nl_bayes_ipol` | σ² comme variance du bruit dans deux filtres de Wiener, γσ comme seuil des zones plates ([NL_BAYES.md](NL_BAYES.md) §7) |
+| `nl_ridge`, `nl_ridge_inria` | nσ² dans les deux régressions de patchs, Θ₁ et Θ₂ (§2.7) |
+| `drunet`, `gsdrunet` | carte de niveau de bruit en entrée du réseau |
+| `swinir` | choix d'un jeu de poids entraîné (15, 25 ou 50) |
+| `epll` | variance du bruit dans l'estimation par maximum de vraisemblance des patchs |
+| `restormer` | aucun (réseau aveugle) |
 
-**1. Filtre de l'étape 1 (estimateur bayésien) :**
-
-```
-Q = P̄ + (C − β₁·σ²·I) · C⁻¹ · (Q̃ − P̄)
-```
-
-Un bruit blanc ajoute exactement `σ²·I` à la covariance d'un groupe :
-`C − σ²·I` est donc la covariance du **signal seul**. Dans les directions
-où la variance du groupe ne dépasse pas celle du bruit, le filtre
-supprime la composante ; là où elle la dépasse nettement (une vraie
-structure), il la conserve.
-
-**2. Filtre de l'étape 2 (Wiener) :**
-
-```
-Q = P̄ + C_b · (C_b + β₂·σ²·I)⁻¹ · (Q̃ − P̄)
-```
-
-`C_b`, mesurée sur l'image déjà débruitée, joue le rôle du signal propre ;
-`σ²` celui du bruit. Leur rapport fixe l'atténuation direction par
-direction.
-
-**3. Critère des zones homogènes (les deux étapes) :**
-
-```
-si  écart-type de tous les pixels du groupe ≤ γ·σ   alors   Q = moyenne du groupe
-```
-
-Une dispersion qui ne dépasse pas celle du bruit signale une zone plate :
-tous les patchs du groupe prennent la valeur moyenne.
-
-**4. Choix des paramètres.** σ sélectionne les paliers de l'article (§2.6) :
-la taille des patchs k₁ et k₂ (donc N et la fenêtre de recherche) augmente
-à σ = 20 (couleur), 50 et 70 ; β₂ passe de 1,2 à 1,0 à σ = 50.
-
-**5. Le regroupement : τ et τ₀ (étape 2 seulement).** À l'étape 2, pour un
-patch de référence, NL-Bayes calcule la distance `d` à tous les patchs de
-la fenêtre de recherche, **sur l'image issue de l'étape 1**, puis :
-
-```
-d_N = distance du N-ième patch le plus proche
-τ   = max(τ₀, d_N)
-groupe = tous les patchs à distance ≤ τ
-```
-
-Sans τ₀, le groupe compte toujours N patchs. τ₀ est un **plancher de
-ressemblance** : dans une zone plate, beaucoup plus de N patchs sont
-presque identiques, et τ₀ permet de tous les prendre (moyenne meilleure).
-À l'étape 1, le groupe compte toujours exactement N patchs (pas de τ).
-
-**Ce qui ne dépend pas de σ.** La distance `d` elle-même, et τ₀, fixé par
-l'article à 4 niveaux² sur l'échelle 0-255 (≈ 2 niveaux d'écart moyen).
-τ₀ est donc un seuil **absolu** : son effet relatif change avec le niveau
-de bruit et avec l'échelle (§4.3). Pour repère, deux patchs bruités d'un
-même signal sont à une distance moyenne de 2σ² ; mais à l'étape 2, les
-distances se mesurent sur l'image déjà débruitée, dont le bruit résiduel
-est bien plus faible que σ.
-
-**τ₀ = 4 est conservé : étude de sensibilité.** Une règle relative,
-τ₀ = c·σ² (σ sur l'échelle 0-255), semblait plus logique. Elle a été
-testée (`examples/tau0_study.py`) :
-
-| Étape | Données | τ₀ = 4 : perte moyenne / max face au meilleur τ₀ | τ₀ = 0,005·σ² : perte moyenne / max |
-|---|---|---|---|
-| Ajustement de c | 6 images × 6 σ (gris) + 6 images × 4 flux (stabilisation) | 0,09 / 0,79 dB | 0,04 / 0,30 dB |
-| Validation (c figé) | 5 autres images, autre tirage : gris, stabilisation, couleur `yuv` | 0,02 / 0,10 (gris) ; 0,04 / 0,27 (stab.) ; 0,13 / 0,62 (couleur) | 0,04 / 0,53 ; 0,03 / 0,11 ; 0,16 / 0,74 |
-
-La règle ne tient pas en validation : son gain du premier jeu venait de
-deux images (grands aplats, texture régulière). **Le meilleur τ₀ dépend
-du contenu de l'image plus que de σ**, et τ₀ = 4 est un compromis robuste.
-τ₀ = 0, en revanche, est à proscrire (jusqu'à −6,8 dB sur des aplats à
-faible flux) : le plancher de l'article est utile. Pour adapter τ₀ à un
-capteur ou à un type de scène, l'optimiser sur une image de référence
-(`OPTIMISATION.md` §2.1), en particulier en couleur, où l'écart à
-l'optimum est le plus grand.
+Dans tous les cas, σ dose l'effet : trop fort, la méthode efface des
+détails ; trop faible, elle laisse du bruit.
 
 ### 4.3 D'où vient la valeur de σ
 
@@ -725,23 +531,13 @@ l'optimum est le plus grand.
    capteur).
 3. **Facteur `sigma_scale`** (optimisation seulement) : multiplie σ avant
    tout le reste.
-4. **Conversion sur l'échelle 0-255**, avec l'image, via `data_range`
-   (par défaut le min/max de l'image). Ce n'est pas un reste du codage
-   8 bits — le calcul se fait en flottants, une image 12 bits ne perd
-   rien — mais le moyen d'appliquer les seuils de l'article (paliers de
-   σ, τ₀), exprimés sur cette échelle. Les filtres 1 à 3 du §4.2, eux,
-   donnent le même résultat quelle que soit l'échelle.
-   Conséquence : ce que l'article appelle « σ = 20 » est en réalité
-   « σ = 20/255 de la dynamique ». Avec le min/max par défaut, une image
-   peu contrastée voit son σ relatif gonflé ; pour une série d'images,
-   fixer `data_range` à la dynamique du capteur (ex. `(0, 4095)`).
-5. **Le même σ sert aux deux étapes.** C'est correct : les filtres
-   s'appliquent toujours aux patchs bruités d'origine `Q̃`, dont le bruit
-   vaut σ ; l'image de l'étape 1 ne sert qu'à former de meilleurs groupes
-   et à estimer `C_b`.
-6. **Couleur** : un seul σ, supposé identique sur les trois canaux. La
-   transformée Y₀U₀V₀ étant orthonormée, il est conservé sur chaque canal
-   transformé.
+4. **Échelle 0-255** (NL-Bayes, NL-Ridge) : σ est converti, avec
+   l'image, sur l'échelle 0-255 de leurs articles via `data_range` (par
+   défaut le min/max de l'image). C'est un calcul en flottants, pas une
+   quantification. Pour une série d'images, fixer `data_range` à la
+   dynamique du capteur (ex. `(0, 4095)`) ; détail pour NL-Bayes :
+   [NL_BAYES.md](NL_BAYES.md) §7.2.
+5. **Couleur** : un seul σ, supposé identique sur les trois canaux.
 
 ### 4.4 Bruit qui dépend de la luminance : modèle (a, b) et stabilisation
 
@@ -749,14 +545,17 @@ Sur une image brute de capteur, la **variance** du bruit suit la
 luminance L (niveau d'obscurité soustrait) :
 
 ```
-σ²(L) = a·L + b        a : pente (bruit photonique, 1/gain)        b : plancher (bruit de lecture²)
+σ²(L) = a + b·L        a : plancher (bruit de lecture²)        b : pente (bruit photonique, 1/gain)
 ```
 
-**Convention, commune à tous les modules EOQual (celle d'eoqual-measure,
-σ² = a·μ + b) : a est la pente, b le plancher.** Les `a` et `b` de la PTC
-d'eoqual-measure s'emploient donc tels quels. Un bruit stationnaire
-d'écart-type σ s'écrit a = 0, b = σ². Jusqu'à la version 0.3.1, ce module
-notait `var = a + b·L`, lettres inversées.
+**Convention, commune à tous les modules EOQual (eoqual-measure compris)
+et aux fichiers de configuration des chaînes de débruitage : a est le
+plancher, b la pente.** Un bruit stationnaire d'écart-type σ s'écrit
+**a = σ², b = 0**. Les `a` et `b` de la PTC d'eoqual-measure s'emploient
+tels quels. Attention aux articles : le modèle poissonnien-gaussien y est
+souvent noté σ² = a·y + b (Foi et al., 2008), lettres inversées. Les
+versions 0.3.2 de ce module et 0.3.1 d'eoqual-measure notaient aussi
+σ² = a·L + b.
 
 Les coefficients `a` et `b` se mesurent : courbe de transfert photonique
 (PTC d'eoqual-measure) ou recette en vol. Le bruit est faible dans les
@@ -765,18 +564,16 @@ convenir partout.
 
 La **stabilisation de variance** (§5) applique à l'image une fonction
 construite à partir de (a, b), qui ramène ce bruit variable à un bruit
-d'écart-type **1 partout**. NL-Bayes reçoit alors `σ = 1` :
+d'écart-type **1 partout**. La méthode reçoit alors `σ = 1` :
 
 - le modèle (a, b) a été pris en compte **en amont**, par la
   transformée, puis par son inverse exacte au retour ;
-- les filtres du §4.2 tournent avec σ = 1 : c'est le même calcul, avec
-  une valeur connue d'avance ;
-- σ = 1 est exprimé dans les unités de l'image transformée, puis converti
-  sur l'échelle 0-255 avec **la dynamique de l'image transformée**, qui
-  dépend du flux (environ 2·√(signal crête en électrons)). Pour 100 e⁻ en
-  crête : dynamique ≈ 20, σ ≈ 255/20 ≈ 13 sur l'échelle de l'article. Le
-  palier de patchs suit donc le niveau de signal, ce qui est le
-  comportement voulu.
+- la méthode fait le même calcul (§4.2), avec une valeur de σ connue
+  d'avance ;
+- pour les méthodes qui travaillent sur l'échelle 0-255 (NL-Bayes,
+  NL-Ridge), σ = 1 est converti avec **la dynamique de l'image
+  transformée**, environ 2·√(signal crête en électrons) : σ ≈ 13 sur
+  cette échelle à 100 e⁻ en crête ([NL_BAYES.md](NL_BAYES.md) §7.2).
 
 **σ est imposé, pas fourni.** `vst_denoise` refuse un argument `sigma`
 (erreur, et non simple avertissement : un σ dans les unités de l'image
@@ -796,7 +593,7 @@ une erreur). Le seul écart permis à σ = 1 est explicite : le paramètre
 Le démosaïçage interpole chaque couleur à partir des photosites voisins.
 Le bruit devient corrélé et sa variance en luminance est multipliée par un
 facteur κ_Y propre au démosaïqueur (0,6 à 2,6, §6.3), la forme affine
-étant conservée : `var_Y(L) ≈ κ_Y · (a·L + b)`. La recette (§6.4) :
+étant conservée : `var_Y(L) ≈ κ_Y · (a + b·L)`. La recette (§6.4) :
 
 1. stabiliser avec les (a, b) **du capteur**, inchangés ;
 2. débruiter avec **σ = C** au lieu de 1, `C = √κ_Y + 0,2` (√κ_Y pour la
@@ -852,8 +649,8 @@ Une image brute de capteur suit, pixel par pixel :
 - `offset_dn` = niveau d'obscurité en DN.
 
 La variance vaut σ²(z) = (z̄ − offset)/K + σ_DN² : elle **croît avec le
-signal**. C'est le modèle du §4.4, `σ²(L) = a·L + b`, avec
-**a = 1/K** (pente) et **b = σ_DN²** (plancher), L = z̄ − offset : la
+signal**. C'est le modèle du §4.4, `σ²(L) = a + b·L`, avec
+**a = σ_DN²** (plancher) et **b = 1/K** (pente), L = z̄ − offset : la
 droite de la PTC d'eoqual-measure, mêmes lettres. Les grandeurs
 physiques se lisent aussi directement sur ses mesures :
 `measure_ptc(...).gain`, `.read_noise_dn`, et le niveau moyen de
@@ -991,8 +788,8 @@ Pour une luminance linéaire normalisée ``L ∈ [0, 1]`` (niveau d'obscurité
 soustrait) :
 
 ```
-σ²(L) = a · L + b         a = 1 / N_sat        (pente : bruit photonique)
-                           b = (σ_r / N_sat)²  (plancher : lecture, obscurité)
+σ²(L) = a + b · L         a = (σ_r / N_sat)²  (plancher : lecture, obscurité)
+                           b = 1 / N_sat        (pente : bruit photonique)
 ```
 
 avec ``N_sat`` les électrons à pleine échelle et ``σ_r`` le bruit de
@@ -1002,7 +799,7 @@ fonctions du §5 :
 
 ```python
 from eoqual.denoising.vst import generalized_anscombe, inverse_generalized_anscombe
-gain, read_noise = 1.0 / a, b ** 0.5          # σ² = a·L + b
+gain, read_noise = 1.0 / b, a ** 0.5          # σ² = a + b·L
 g = generalized_anscombe(L, gain, read_noise)  # bruit d'écart-type ≈ 1
 ```
 
@@ -1042,7 +839,7 @@ from eoqual.denoising import vst_denoise
 C = 1.35 ** 0.5 + 0.2                  # Hamilton-Adams : κ_Y = 1,35
 rgb_debruitee = vst_denoise(
     rgb, "nl_bayes",                   # image (H, W, 3)
-    gain=1.0 / a, read_noise_dn=b ** 0.5,   # σ² = a·L + b
+    gain=1.0 / b, read_noise_dn=a ** 0.5,   # σ² = a + b·L
     noise_factor=C, color_mode="yuv",
 )
 ```
@@ -1050,7 +847,7 @@ rgb_debruitee = vst_denoise(
 En ligne de commande : `examples/one_method_cli.py demosaiquee.tif
 sortie.tif --method nl_bayes --vst-gain … --vst-read-noise … --kappa-y 1.35`.
 
-Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a·L̄ + b)``, un peu moins
+Sans stabilisation : ``σ = C · σ₀`` avec ``σ₀ = √(a + b·L̄)``, un peu moins
 bon (0.05 à 0.2 dB) car le vrai σ varie avec la luminance.
 
 Mode opératoire complet sur données réelles (unités de ``(a, b)``,
@@ -1218,8 +1015,10 @@ Les méthodes dont l'extra ou le composant externe manque sont sautées
 | `low_light_vst.py` | effet de la stabilisation de variance à faible flux (tableaux du §5.5) |
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode (`OPTIMISATION.md`) : journal, meilleurs paramètres, image, figures |
 | `benchmark.py` | benchmark principal (`BENCHMARK.md` §2-3) |
-| `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes (`BENCHMARK.md` §8) |
-| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ (étude du §4.2) |
+| `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §11.1-11.2) |
+| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ ([NL_BAYES.md](NL_BAYES.md) §11.3) |
+| `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres, orthophotos, RGB démosaïqué ([NL_BAYES.md](NL_BAYES.md) §11.4-11.5) |
+| `nl_bayes_figures.py` | figures explicatives de [NL_BAYES.md](NL_BAYES.md) |
 
 ### 9.3 Performances indicatives
 
@@ -1386,3 +1185,5 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-11-16 | Réseaux dans eoqual-neural (0.3.0) | DRUNet, SwinIR, Restormer et GS-DRUNet passent dans le nouveau module eoqual-neural (réseaux rangés par rôle, poids et PyTorch en un seul endroit). `backends/neural.py` adapte le contrat d'eoqual-denoising ; anciens chemins (`backends/drunet/deepinv_impl.py`, `backends/deepinv_zoo/models.py`) conservés en renvoi ; extra `neural` créé, `deep` le contient pour compatibilité. EPLL, TGV et `wavelet_dict` restent ici : ce ne sont pas des réseaux. Sorties identiques (tests inchangés). |
 | 2026-11-16 | Arguments avant scikit-optimize (0.3.1) | `optimize_parameters` importait scikit-optimize avant de vérifier ses arguments : sans l'extra `optim`, une image couleur passée à une méthode en niveaux de gris levait une `ImportError` au lieu de l'erreur attendue. L'import vient maintenant après les contrôles ; `test_color_image_rejected_for_gray_method` et `test_errors` ne dépendent plus de scikit-optimize. eoqual-neural épinglé en v0.1.1. |
 | 2026-11-17 | Notation du bruit (0.3.2) | Modèle de bruit noté σ² = a·L + b (a pente, b plancher), comme eoqual-measure : les `a`, `b` de sa PTC s'emploient tels quels. Le module notait `var = a + b·L`, lettres inversées, ce qui obligeait à les permuter. Documentation et exemples seulement ; API inchangée (`gain`, `read_noise_dn`). Même changement dans eoqual-demosaicing 0.2.1 et eoqual-deconvolution 0.6.2. |
+| 2026-11-18 | Document NL-Bayes | Tout ce qui concerne NL-Bayes (ex-§2.6 détaillé, ex-§4.2 « Où σ intervient » et étude de τ₀, redondance σ/β/γ d'`OPTIMISATION.md`, `BENCHMARK.md` §8) regroupé dans `NL_BAYES.md`, avec covariance et filtre de Wiener détaillés, figures, et deux études de sensibilité nouvelles (orthophotos texturées ; RGB démosaïqué, zones sombres). Correction : la redondance entre `sigma_scale`, β₁, β₂ et γ ne porte que sur un réglage, pas sur tous. Constats : gain de l'étape 1 non borné (formule de l'article, conservée), bruit démosaïqué corrélé non traité par le modèle σ²·I. |
+| 2026-11-18 | Notation du bruit inversée | Retour à **σ² = a + b·L** (a plancher, b pente ; bruit stationnaire : a = σ², b = 0), désormais commun à tous les modules EOQual, eoqual-measure compris (son API suit : `PTCResult.a` est le plancher), et aux configurations des chaînes de débruitage. Documentation et exemples ; API du module inchangée (`gain`, `read_noise_dn`). |

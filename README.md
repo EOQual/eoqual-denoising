@@ -9,6 +9,8 @@ de la Terre, avec stabilisation de variance pour le bruit
 poisson-gaussien des images brutes de capteur. Voir **[REFERENCE_TECHNIQUE.md](REFERENCE_TECHNIQUE.md)**
 pour le détail de chaque méthode (principe, implémentation, limites,
 performances indicatives) et pour le rôle du niveau de bruit σ,
+**[NL_BAYES.md](NL_BAYES.md)** pour NL-Bayes en détail (mathématiques,
+paramètres, études de sensibilité, réglage),
 **[OPTIMISATION.md](OPTIMISATION.md)** pour le réglage des paramètres
 (dont σ et le modèle de bruit) sur une image de référence,
 **[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)**
@@ -121,7 +123,7 @@ out = d.vst_denoise(raw, "drunet", gain=2.0, read_noise_dn=1.5, offset_dn=100.0)
 Le démosaïçage corrèle le bruit et en change le niveau : débruiter avec
 le σ du capteur laisse des taches colorées, et estimer σ sur l'image
 démosaïquée en trouve la moitié. Recette (stabilisation avec le modèle
-de bruit du capteur ``σ² = a·L + b`` (PTC d'eoqual-measure), puis NL-Bayes couleur avec
+de bruit du capteur ``σ² = a + b·L`` (a plancher, b pente ; PTC d'eoqual-measure), puis NL-Bayes couleur avec
 ``σ = √κ_Y + 0.2`` selon le démosaïqueur) : voir
 [REFERENCE_TECHNIQUE.md §6](REFERENCE_TECHNIQUE.md#6-cas-particulier--débruiter-une-image-démosaïquée),
 et la référence technique d'eoqual-demosaicing, chapitre 11.
@@ -172,6 +174,8 @@ Exemples prêts à l'emploi dans `examples/` :
 | `low_light_vst.py` | stabilisation de variance à faible flux |
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode |
 | `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ |
+| `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres (orthophotos, RGB démosaïqué) |
+| `nl_bayes_figures.py` | figures explicatives de `NL_BAYES.md` |
 | `benchmark.py`, `nl_bayes_benchmark.py` | reproduire `BENCHMARK.md` |
 
 ---

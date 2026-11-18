@@ -150,7 +150,7 @@ avec les réglages optimisés sur la moitié de réglage.
 lignes : 25 évaluations. La ligne `nl_bayes` a été mesurée avec l'espace
 de l'époque (10 dimensions, dont β₁, β₂, γ) ; l'espace par défaut n'en
 garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
-(`OPTIMISATION.md` §2.3).
+([NL_BAYES.md](NL_BAYES.md) §7.3).
 
 ### 3.1 Lecture
 
@@ -244,47 +244,6 @@ liste les autres avec la raison de leur absence.
 
 ## 8. NL-Bayes : moteurs et couleur
 
-`examples/nl_bayes_benchmark.py`, moitié droite (512×256) d'astronaut,
-graine 2, σ connu.
-
-### 8.1 Niveaux de gris — moteur vectorisé et boucle (PSNR, dB)
-
-| Moteur | σ = 0,05 | σ = 0,1 | σ = 0,2 | Temps (σ = 0,1) |
-|---|---|---|---|---|
-| boucle (article, astuce « paste ») | 36,12 | 32,39 | 28,67 | 2,34 s |
-| vectorisé, pas 2 | 36,12 | **32,45** | **28,72** | 2,76 s |
-| **vectorisé, pas 3 (défaut)** | 36,10 | 32,42 | 28,68 | **1,38 s** |
-| vectorisé, pas 4 | 36,07 | 32,36 | 28,65 | 0,84 s |
-| vectorisé, pas 3, un seul fil | 36,10 | 32,42 | 28,68 | 4,03 s |
-
-Le moteur vectorisé remplace l'astuce « paste » (séquentielle) par une
-grille de références. Au pas 3, il égale la boucle en qualité pour un
-temps divisé par 1,7 ; au pas 4, par 2,8 pour −0,03 dB. En un seul fil,
-il est plus lent que la boucle : son gain vient du traitement par lots
-réparti sur plusieurs cœurs (résultat identique quel que soit le nombre
-de fils).
-
-### 8.2 Couleur RGB
-
-| Traitement | PSNR σ = 0,05 | PSNR σ = 0,1 | PSNR σ = 0,2 | SSIM σ = 0,1 | Temps (σ = 0,1) |
-|---|---|---|---|---|---|
-| *(image bruitée)* | 26,02 | 20,00 | 13,98 | 0,313 | — |
-| **`yuv` — Y₀U₀V₀ puis RGB (article, défaut)** | **36,24** | **33,07** | **29,85** | 0,910 | **1,65 s** |
-| `rgb` — RGB, groupes communs | 36,02 | 32,77 | 29,31 | **0,912** | 1,92 s |
-| `channel` — canal par canal | 35,76 | 32,23 | 28,61 | 0,906 | 4,13 s |
-| IPOL C++, canal par canal | 35,44 | 31,83 | 28,17 | 0,872 | 0,76 s |
-
-- **La méthode de l'article (`yuv`) l'emporte nettement** : +0,8 dB sur
-  le canal par canal à σ = 0,1, +1,2 dB à σ = 0,2, pour un temps divisé
-  par 2,5. Former les groupes sur la luminance Y₀ (moyenne des trois
-  canaux, donc moins bruitée) donne des groupes plus fiables, que les
-  canaux de chrominance partagent.
-- **`rgb`** (groupes communs, sans changement d'espace) récupère une
-  partie du gain (+0,5 dB) : l'essentiel vient du partage des groupes
-  entre canaux, le reste de la transformée Y₀U₀V₀.
-- **Le canal par canal** est le plus lent (trois débruitages complets)
-  et le moins bon : chaque canal forme ses groupes sur une image plus
-  bruitée et ignore la corrélation entre canaux.
-
-Reproduire : `python examples/nl_bayes_benchmark.py --out nl_bayes.md`
-(ajouter `EOQUAL_NLBAYES_EXE` pour la ligne IPOL).
+Résultats et lecture : [NL_BAYES.md](NL_BAYES.md) §11.1 (moteurs) et
+§11.2 (couleur). Reproduire : `python examples/nl_bayes_benchmark.py --out
+nl_bayes.md`.
