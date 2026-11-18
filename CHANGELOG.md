@@ -6,6 +6,12 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.4.0 (2026-11-18)
+
+:   -   **Espace d'optimisation de `nl_bayes` réduit à trois dimensions** : `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90], départ `sigma_scale` = 1, β₂ = 1,2, N₂ = 30. β₁, γ, τ₀, `window_factor`, `use_area1`, `use_area2` passent dans `fixed`. **Changement de comportement** : l'ancien espace (7 dimensions : `sigma_scale`, k₁, k₂, α, τ₀, critères homogènes) ne s'applique plus par défaut ; 15 à 25 évaluations suffisent.
+    -   **`NL_BAYES.md`** : nouveau document sur NL-Bayes (covariance, filtre de Wiener, deux étapes, paramètres, σ, couleur, jeux de données, études de sensibilité sur orthophotos texturées et RGB démosaïqué, σ × β après stabilisation, taille réelle des groupes, réglage), avec figures ; contenu retiré de `REFERENCE_TECHNIQUE.md`, `OPTIMISATION.md` et `BENCHMARK.md`. Exemples `nl_bayes_figures.py` et `nl_bayes_sensitivity.py`.
+    -   **Notation du modèle de bruit : σ² = a + b·L** (`a` plancher, `b` pente ; bruit stationnaire a = σ², b = 0), commune à tous les modules EOQual, eoqual-measure 0.4.0 compris. Lettres inversées par rapport à 0.3.2. Documentation seulement : l'API (`gain`, `read_noise_dn`) ne change pas.
+
 0.3.2 (2026-11-17)
 
 :   -   **Notation du modèle de bruit alignée sur eoqual-measure** : **σ² = a·L + b**, `a` pente (1/gain), `b` plancher (bruit de lecture²) ; les `a` et `b` de la PTC d'eoqual-measure s'emploient tels quels. Les versions précédentes notaient `var = a + b·L`, lettres inversées.
