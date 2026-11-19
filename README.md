@@ -42,8 +42,9 @@ Installe tout ce qui est nécessaire pour 8 des 18 méthodes du catalogue
 (`bilateral`, `nl_means`, `tv_chambolle`, `tv_bregman`, `wavelet`,
 `nl_bayes`, `nl_bayes_cfa`, `nl_ridge`) et
 pour la stabilisation de variance (`vst_denoise`). Les dépendances sont
-numpy, scipy, scikit-image, opencv-python, PyWavelets, matplotlib et
-rich, toutes sous licence permissive.
+numpy, scipy, scikit-image, opencv-python, PyWavelets, matplotlib,
+rich et [nlbayes-ext](https://github.com/oam31/nlbayes-ext) (NL-Bayes, `nl_bayes` et
+`nl_bayes_cfa`, même auteur), toutes sous licence permissive.
 
 ### 2. Extras optionnels
 

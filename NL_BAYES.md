@@ -7,7 +7,8 @@ par optimisation. Les autres documents y renvoient.
 
 | Méthode du registre | Implémentation | Licence |
 |---|---|---|
-| `nl_bayes` | réimplémentation numpy écrite depuis l'article (`backends/nl_bayes/native.py`, `vectorized.py`) | MIT |
+| `nl_bayes` | implémentation numpy écrite depuis l'article, fournie par la bibliothèque **nlbayes-ext** (https://github.com/oam31/nlbayes-ext, `denoise_gray`, `denoise_rgb`), appelée par `backends/nl_bayes/native.py` | MIT |
+| `nl_bayes_cfa` | extension aux mosaïques de Bayer, nlbayes-ext (`denoise_cfa`), appelée par `backends/nl_bayes/cfa.py` (§13) | MIT |
 | `nl_bayes_ipol` | exécutable C++ de l'article IPOL, appelé en composant externe (`backends/nl_bayes/ipol_external.py`, installation : `REFERENCE_TECHNIQUE.md` §3.10) | GPL-3.0+ |
 
 **Références.** A. Buades, M. Lebrun, J.-M. Morel, « A Nonlocal Bayesian
@@ -1010,7 +1011,7 @@ x̂ = μ + C·Uᵀ·(U·C·Uᵀ + β·σ²·I)⁻¹·(y − U·μ)
 5. **Itération** : la sortie devient le pilote, et on reprend en 2 ;
    `n_iter` passes (8 par défaut), à la manière de l'EM de Yu et al.
 
-Paramètres (`backends/nl_bayes/cfa.py`) : `pattern` (`"RGGB"`, `"BGGR"`,
+Paramètres (`denoise_cfa` de nlbayes-ext, appelé par `backends/nl_bayes/cfa.py`) : `pattern` (`"RGGB"`, `"BGGR"`,
 `"GRBG"`, `"GBRG"`), `k` = 3, `window_factor` = 7, `N` = 60, `beta` = 1,
 `tau0` = 4 (sur [0, 255]), `n_iter` = 8, `pilot` (`"bilinear"`, `"none"`
 ou une image), critère des zones homogènes (`use_area` = faux,

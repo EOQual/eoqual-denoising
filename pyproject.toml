@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "eoqual-denoising"
-version = "0.4.1"
+version = "0.5.0"
 description = "Collection of Earth observation image denoising methods"
 authors = ["Olivier Amram <olivier.amram@free.fr>"]
 maintainers = [
@@ -25,6 +25,8 @@ numpy = "*"
 # scipy : loi de Poisson de l'inverse exacte de la GAT (vst.py).
 scipy = "*"
 scikit-image = "*"
+# NL-Bayes (nl_bayes, nl_bayes_cfa) : bibliothèque nlbayes-ext (MIT, même auteur), qui fait le calcul.
+nlbayes-ext = {git = "https://github.com/oam31/nlbayes-ext.git", tag = "v0.1.0"}
 opencv-python = "*"
 pywavelets = "*"
 matplotlib = "^3.5.0"

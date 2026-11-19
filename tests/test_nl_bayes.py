@@ -62,7 +62,7 @@ def test_nl_bayes_threads_do_not_change_result(noisy):
 
 
 def test_yuv_matrix_is_orthonormal():
-    from eoqual.denoising.backends.nl_bayes.vectorized import YUV_MATRIX
+    from nlbayes_ext import YUV_MATRIX
 
     assert np.allclose(YUV_MATRIX @ YUV_MATRIX.T, np.eye(3))
 

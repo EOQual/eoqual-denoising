@@ -167,9 +167,11 @@ est la plus rapide du socle mais la moins performante en PSNR.
 
 ### 2.6 `nl_bayes` — NL-Bayes, réimplémentation MIT
 
-**Fichiers** : `backends/nl_bayes/native.py` (interface, paramètres,
-moteur « boucle ») et `backends/nl_bayes/vectorized.py` (moteur
-vectorisé, couleur) — implémentation originale numpy, sans dépendance.
+**Fichiers** : `backends/nl_bayes/native.py` (adaptateur) ; le calcul est
+fait par la bibliothèque **nlbayes-ext** (MIT, même auteur,
+https://github.com/oam31/nlbayes-ext, numpy et scipy seulement),
+dépendance du socle épinglée sur `v0.1.0`. `nl_bayes_cfa` passe de même
+par `backends/nl_bayes/cfa.py`.
 **Références** : Buades, Lebrun & Morel (2013, SIAM) ; article IPOL de
 Lebrun, Buades & Morel (2013), **seule source utilisée** (clean-room :
 aucun code consulté, voir `THIRD_PARTY_LICENSES.md` §2.1).
@@ -1190,3 +1192,4 @@ annexe en garde la trace. Les versions publiées sont résumées dans
 | 2026-11-18 | Document NL-Bayes | Tout ce qui concerne NL-Bayes (ex-§2.6 détaillé, ex-§4.2 « Où σ intervient » et étude de τ₀, redondance σ/β/γ d'`OPTIMISATION.md`, `BENCHMARK.md` §8) regroupé dans `NL_BAYES.md`, avec covariance et filtre de Wiener détaillés, figures, et deux études de sensibilité nouvelles (orthophotos texturées ; RGB démosaïqué, zones sombres). Correction : la redondance entre `sigma_scale`, β₁, β₂ et γ ne porte que sur un réglage, pas sur tous. Constats : gain de l'étape 1 non borné (formule de l'article, conservée), bruit démosaïqué corrélé non traité par le modèle σ²·I. |
 | 2026-11-18 | Notation du bruit inversée | Retour à **σ² = a + b·L** (a plancher, b pente ; bruit stationnaire : a = σ², b = 0), désormais commun à tous les modules EOQual, eoqual-measure compris (son API suit : `PTCResult.a` est le plancher), et aux configurations des chaînes de débruitage. Documentation et exemples ; API du module inchangée (`gain`, `read_noise_dn`). |
 | 2026-11-19 | Étape 2 couleur de NL-Bayes (0.4.1) | Canaux filtrés ensemble à l'étape 2 (`yuv`, `rgb`), comme le tableau 1 de l'article (deux groupes 3D en tout) ; ils l'étaient canal par canal. Écart révélé en comparant à l'exécutable IPOL en mode couleur ; +0,6 à +0,8 dB sur le benchmark couleur ([NL_BAYES.md](NL_BAYES.md) §8.1, §11.2). |
+| 2026-11-19 | NL-Bayes dans nlbayes-ext | Le calcul de `nl_bayes` et `nl_bayes_cfa` passe dans la bibliothèque indépendante nlbayes-ext (MIT, https://github.com/oam31/nlbayes-ext, v0.1.0), dont eoqual-denoising dépend ; `backends/nl_bayes/native.py` et `cfa.py` deviennent des adaptateurs (contrat d'appel et estimation de σ inchangés), `vectorized.py` est supprimé. Sorties identiques au bit près (vérifié sur gris, couleur, moteur boucle, σ estimé, CFA). |

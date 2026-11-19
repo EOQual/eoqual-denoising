@@ -27,7 +27,7 @@ chargent leur backend qu'à l'appel. Voir ``README.md`` pour
 l'installation et ``THIRD_PARTY_LICENSES.md`` pour l'audit des licences.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 __title__ = "eoqual.denoising"
 __description__ = "Collection of Earth observation image denoising methods"
 __url__ = "https://github.com/EOQual/eoqual-denoising"

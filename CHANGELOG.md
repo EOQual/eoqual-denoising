@@ -6,6 +6,12 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.5.0 (2026-11-19)
+
+:   -   **Nouvelle méthode `nl_bayes_cfa`** : débruitage et démosaïçage conjoints d'une mosaïque de Bayer (H, W) → image RGB (H, W, 3). Estimateur d'un problème inverse linéaire à a priori gaussien (Yu, Sapiro & Mallat, 2012) sur les groupes NL-Bayes, passes successives (N = 60, 8 passes par défaut), critère des zones homogènes optionnel. Nouvelle catégorie `CFA_METHODS` dans le registre. Sur mosaïques simulées, +1,0 à +6,0 dB sur Hamilton-Adams + NL-Bayes, contre la vraie image (`NL_BAYES.md` §13).
+    -   **NL-Bayes dans la bibliothèque nlbayes-ext** (MIT, même auteur, https://github.com/oam31/nlbayes-ext, v0.1.0), nouvelle dépendance du socle : `nl_bayes` et `nl_bayes_cfa` l'appellent ; sorties identiques au bit près à la version 0.4.1.
+    -   **Études couleur remesurées** (`NL_BAYES.md` §11.8) : contre la vraie image, la recette σ = C = √κ_Y + 0,2, β₂ = 1,2 est au meilleur ; le réglage σ = 1,1, β₂ = 0,8-1,0 venait d'une référence « démosaïçage sans bruit » qui pénalise la correction de couleur. `nl_bayes_sensitivity.py --reference truth`, exemple `nl_bayes_cfa_study.py`.
+
 0.4.1 (2026-11-19)
 
 :   -   **Correction de NL-Bayes couleur** (`color_mode="yuv"` et `"rgb"`) : à l'étape 2, les trois canaux sont maintenant filtrés **ensemble** (patchs de 3k² valeurs, covariance commune), comme l'indique le tableau 1 de l'article (deux groupes 3D en tout à l'étape 2). Ils étaient filtrés canal par canal, ce qui pouvait dégrader l'estimée de l'étape 1 à faible bruit. Gain en couleur : +0,6 à +0,8 dB sur le benchmark (`NL_BAYES.md` §11.2) ; niveaux de gris et mode `channel` inchangés. **Changement de résultat** pour toute image couleur. Les études couleur de `NL_BAYES.md` §11.5 à §11.7, mesurées avant, sont signalées à refaire.
