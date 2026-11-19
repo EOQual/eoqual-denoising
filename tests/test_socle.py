@@ -8,11 +8,13 @@ bruitée, σ estimé automatiquement, invariance d'échelle (image 12 bits).
 import pytest
 
 from _helpers import SIGMA, check_gain
-from eoqual.denoising.config import METHODS_CONFIGS
+from eoqual.denoising.config import CFA_METHODS, METHODS_CONFIGS
 from eoqual.denoising import add_gaussian_noise
 from eoqual.denoising.runner import denoise
 
-SOCLE = [m for m, cfg in METHODS_CONFIGS.items() if cfg["extra"] is None and cfg["external"] is None]
+# Les méthodes CFA (mosaïque → RGB) ont leurs propres tests (test_nl_bayes_cfa.py).
+SOCLE = [m for m, cfg in METHODS_CONFIGS.items()
+         if cfg["extra"] is None and cfg["external"] is None and m not in CFA_METHODS]
 
 
 @pytest.mark.parametrize("method", SOCLE)

@@ -28,6 +28,7 @@ _DISPATCH = {
     "tv_bregman": "eoqual.denoising.backends.tv.skimage_impl:tv_bregman_denoise",
     "wavelet": "eoqual.denoising.backends.wavelet.skimage_impl:wavelet_denoise",
     "nl_bayes": "eoqual.denoising.backends.nl_bayes.native:nl_bayes_denoise",
+    "nl_bayes_cfa": "eoqual.denoising.backends.nl_bayes.cfa:nl_bayes_cfa_denoise",
     "nl_ridge": "eoqual.denoising.backends.nl_ridge.native:nl_ridge_denoise",
     "drunet": "eoqual.denoising.backends.neural:drunet_denoise",
     "swinir": "eoqual.denoising.backends.neural:swinir_denoise",

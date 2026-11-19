@@ -38,9 +38,9 @@ chiffrée des méthodes (réglages par défaut et optimisés).
 pip install git+https://github.com/EOQual/eoqual-denoising.git
 ```
 
-Installe tout ce qui est nécessaire pour 7 des 17 méthodes du catalogue
+Installe tout ce qui est nécessaire pour 8 des 18 méthodes du catalogue
 (`bilateral`, `nl_means`, `tv_chambolle`, `tv_bregman`, `wavelet`,
-`nl_bayes`, `nl_ridge`) et
+`nl_bayes`, `nl_bayes_cfa`, `nl_ridge`) et
 pour la stabilisation de variance (`vst_denoise`). Les dépendances sont
 numpy, scipy, scikit-image, opencv-python, PyWavelets, matplotlib et
 rich, toutes sous licence permissive.
@@ -176,6 +176,7 @@ Exemples prêts à l'emploi dans `examples/` :
 | `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ |
 | `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres (orthophotos, RGB démosaïqué) |
 | `nl_bayes_figures.py` | figures explicatives de `NL_BAYES.md` |
+| `nl_bayes_cfa_study.py` | `nl_bayes_cfa` (mosaïque → RGB) contre Hamilton-Adams puis NL-Bayes, contre la vraie image |
 | `benchmark.py`, `nl_bayes_benchmark.py` | reproduire `BENCHMARK.md` |
 
 ---
@@ -195,6 +196,7 @@ passer par `vst_denoise`).
 | `tv_bregman` | — | Variation totale (ROF), solveur split Bregman | BSD-3 (scikit-image) |
 | `wavelet` | — | Seuillage des coefficients d'ondelettes (BayesShrink/VisuShrink) | BSD-3 (scikit-image) |
 | `nl_bayes` | — | Estimateur bayésien gaussien non local sur groupes de patchs, deux étapes ; **couleur** (Y₀U₀V₀ de l'article, RGB, canal par canal) | MIT (réimplémentation depuis l'article IPOL) |
+| `nl_bayes_cfa` | — | **Mosaïque de Bayer → RGB** : débruite et démosaïque ensemble ; estimateur gaussien de Yu, Sapiro & Mallat (PLE) sur les groupes NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §13) | MIT (réimplémentation depuis les articles) |
 | `nl_ridge` | — | Combinaisons linéaires de patchs similaires, poids en forme fermée (SURE puis ridge) | MIT (réimplémentation depuis les articles) |
 | `drunet` | `deep` | Réseau U-Net résiduel conditionné par σ, poids pré-entraînés | BSD-3 (deepinv) |
 | `swinir` | `deep` | Transformeur à fenêtres glissantes, poids par niveau de bruit (15/25/50) | Apache-2.0 (poids) / BSD-3 |

@@ -50,6 +50,7 @@ la fiche PyPI ou le `README` du dépôt des auteurs (2026-10-28).
 | `nl_ridge` (cadre étendu, contrainte affine) | Herbreteau, S., & Kervrann, C. (2025). *A Unified Framework of Nonlocal Parametric Methods for Image Denoising*. SIAM Journal on Imaging Sciences, 18(1), 89-119. https://doi.org/10.1137/24M1630967 |
 | `nl_bayes` | Buades, A., Lebrun, M., & Morel, J.-M. (2013). *A Nonlocal Bayesian Image Denoising Algorithm*. SIAM Journal on Imaging Sciences, 6(3), 1665-1688. |
 | `nl_bayes` (source de la réimplémentation), `nl_bayes_ipol` (exécutable) | Lebrun, M., Buades, A., & Morel, J.-M. (2013). *Implementation of the "Non-Local Bayes" (NL-Bayes) Image Denoising Algorithm*. Image Processing On Line, 3, 1-42. https://doi.org/10.5201/ipol.2013.16 |
+| `nl_bayes_cfa` | Yu, G., Sapiro, G., & Mallat, S. (2012). *Solving Inverse Problems With Piecewise Linear Estimators: From Gaussian Mixture Models to Structured Sparsity*. IEEE Transactions on Image Processing, 21(5), 2481-2499. https://doi.org/10.1109/TIP.2011.2176743 |
 
 ## Stabilisation de variance (`vst.py`)
 

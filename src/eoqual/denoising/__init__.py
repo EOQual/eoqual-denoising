@@ -59,6 +59,7 @@ from .backends.bm3d.tau_wrapper import bm3d_denoise  # noqa: F401
 from .backends.nl_ridge.native import nl_ridge_denoise  # noqa: F401
 from .backends.nl_ridge.external import nl_ridge_inria_denoise  # noqa: F401
 from .backends.nl_bayes.native import nl_bayes_denoise  # noqa: F401
+from .backends.nl_bayes.cfa import nl_bayes_cfa_denoise  # noqa: F401
 from .backends.nl_bayes.ipol_external import nl_bayes_ipol_denoise  # noqa: F401
 
 from .utils import add_gaussian_noise, astronaut_gray, astronaut_rgb, estimate_noise_sigma  # noqa: F401
@@ -88,6 +89,7 @@ __all__ = [
     "nl_ridge_denoise",
     "nl_ridge_inria_denoise",
     "nl_bayes_denoise",
+    "nl_bayes_cfa_denoise",
     "nl_bayes_ipol_denoise",
     "generalized_anscombe",
     "inverse_generalized_anscombe",

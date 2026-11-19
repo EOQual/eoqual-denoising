@@ -40,7 +40,7 @@ import numpy as np
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 import eoqual.denoising as d
-from eoqual.denoising.config import METHODS_CONFIGS
+from eoqual.denoising.config import CFA_METHODS, METHODS_CONFIGS
 from eoqual.denoising.runner import _resolve
 
 
@@ -61,7 +61,7 @@ def _available(method, probe):
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--methods", nargs="+", default=list(METHODS_CONFIGS))
+    p.add_argument("--methods", nargs="+", default=[m for m in METHODS_CONFIGS if m not in CFA_METHODS])
     p.add_argument("--sigmas", nargs="+", type=float, default=[0.05, 0.1, 0.2])
     p.add_argument("--tune-sigma", type=float, default=0.1)
     p.add_argument("--n-calls", type=int, default=25)

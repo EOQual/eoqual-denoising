@@ -26,7 +26,7 @@ from rich.table import Table
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 import eoqual.denoising as d
-from eoqual.denoising.config import METHODS_CONFIGS
+from eoqual.denoising.config import CFA_METHODS, METHODS_CONFIGS
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
     parser.add_argument("--sigma", type=float, default=0.1, help="écart-type du bruit (image dans [0, 1])")
     parser.add_argument("--size", type=int, default=256, help="taille de l'image de test")
     parser.add_argument("--out", default="overview.png", help="planche de sortie")
-    parser.add_argument("--methods", nargs="+", default=list(METHODS_CONFIGS), help="méthodes à comparer (défaut : toutes)")
+    parser.add_argument("--methods", nargs="+", default=[m for m in METHODS_CONFIGS if m not in CFA_METHODS], help="méthodes à comparer (défaut : toutes)")
     args = parser.parse_args()
 
     clean = d.astronaut_gray(args.size)

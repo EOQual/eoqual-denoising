@@ -66,6 +66,13 @@ METHODS_CONFIGS: OrderedDict = OrderedDict(
             "restriction": None,
             "reference": "Buades, Lebrun & Morel (2013), SIAM J. Imaging Sci. 6(3)",
         },
+        "nl_bayes_cfa": {
+            "extra": None,
+            "external": None,
+            "license": "MIT (réimplémentation depuis les articles)",
+            "restriction": None,
+            "reference": "Yu, Sapiro & Mallat (2012), IEEE TIP 21(5) ; Buades, Lebrun & Morel (2013)",
+        },
         "nl_ridge": {
             "extra": None,
             "external": None,
@@ -149,3 +156,7 @@ METHODS_CONFIGS: OrderedDict = OrderedDict(
 #: Méthodes qui acceptent une image couleur (H, W, 3) en plus d'une image
 #: 2D. Les autres traitent une seule bande.
 COLOR_METHODS: frozenset = frozenset({"nl_bayes"})
+
+#: Méthodes qui prennent une mosaïque de Bayer (H, W) et rendent une image
+#: RGB (H, W, 3) : elles démosaïquent en même temps qu'elles débruitent.
+CFA_METHODS: frozenset = frozenset({"nl_bayes_cfa"})

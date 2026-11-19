@@ -44,8 +44,14 @@ def test_jsonc_comments_and_trailing_commas():
 
 
 def test_every_tunable_method_has_a_search_space():
-    """Toutes les méthodes du registre ont un espace, sauf restormer (aveugle, sans réglage)."""
-    assert set(SEARCH_SPACES) == set(METHODS_CONFIGS) - {"restormer"}
+    """
+    Toutes les méthodes du registre ont un espace, sauf restormer (aveugle,
+    sans réglage) et les méthodes CFA (sortie RGB d'une mosaïque : pas encore
+    branchées sur optimize_parameters).
+    """
+    from eoqual.denoising.config import CFA_METHODS
+
+    assert set(SEARCH_SPACES) == set(METHODS_CONFIGS) - {"restormer"} - CFA_METHODS
 
 
 @pytest.mark.parametrize("method", sorted(SEARCH_SPACES))

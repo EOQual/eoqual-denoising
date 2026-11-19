@@ -49,6 +49,7 @@ pandas, matplotlib, scikit-image ; eoqual-demosaicing pour ``rgb``.
 from __future__ import annotations
 
 import argparse
+import os
 import csv
 import itertools
 import json
@@ -222,7 +223,11 @@ def rgb_case(img, peak, draw):
     mos[0::2, 1::2] = ref[0::2, 1::2, 1]
     mos[1::2, 0::2] = ref[1::2, 0::2, 1]
     noisy = rng.poisson(mos) + rng.normal(0, READ, mos.shape)
-    return ha_demosaic(mos).astype(np.float64), ha_demosaic(noisy).astype(np.float64)
+    # Référence : démosaïçage sans bruit (« ha », défaut : isole l'effet du débruiteur) ou vraie image
+    # (« truth » : inclut l'erreur de démosaïçage) ; choisie par --reference (variable d'environnement,
+    # héritée par les processus de calcul).
+    target = ref if os.environ.get("NLB_REFERENCE", "ha") == "truth" else ha_demosaic(mos).astype(np.float64)
+    return target, ha_demosaic(noisy).astype(np.float64)
 
 
 def rgb_metrics(ref, out, peak):
@@ -555,8 +560,11 @@ def main() -> int:
     p.add_argument("--parts", nargs="+", choices=("gray", "rgb", "sigma_beta", "groups"), default=["gray", "rgb", "sigma_beta", "groups"])
     p.add_argument("--out", type=Path, default=Path("etude_nl_bayes"))
     p.add_argument("--n-jobs", type=int, default=8)
+    p.add_argument("--reference", choices=("ha", "truth"), default="ha",
+                   help="volets rgb et sigma_beta : référence = démosaïçage sans bruit (ha) ou vraie image (truth)")
     p.add_argument("--figures-only", action="store_true", help="ne recalcule pas, relit les CSV")
     args = p.parse_args()
+    os.environ["NLB_REFERENCE"] = args.reference
 
     import matplotlib
 

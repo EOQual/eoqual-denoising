@@ -35,6 +35,7 @@ lui-même, comme celui de tous les paramètres, est dans `OPTIMISATION.md`.
 | `tv_bregman` | variationnel | variation totale (ROF), solveur split Bregman | §2.4 |
 | `wavelet` | transformée | seuillage des coefficients d'ondelettes | §2.5 |
 | `nl_bayes` | non local, 2 étapes | estimateur bayésien gaussien sur groupes de patchs ; couleur | §2.6, [NL_BAYES.md](NL_BAYES.md) |
+| `nl_bayes_cfa` | non local, itératif | mosaïque de Bayer → RGB : estimateur gaussien (PLE) sur les groupes NL-Bayes, débruite et démosaïque | [NL_BAYES.md](NL_BAYES.md) §13 |
 | `nl_ridge` | non local, 2 étapes | combinaisons linéaires de patchs, poids en forme fermée (SURE puis ridge) | §2.7 |
 | `drunet` | réseau | U-Net résiduel conditionné par σ | §3.1 |
 | `swinir` | réseau | transformeur à fenêtres glissantes, poids par niveau de bruit | §3.2 |
@@ -510,6 +511,7 @@ Deux cas réels sortent de ce modèle et sont traités à part :
 | ondelettes (`wavelet`, `wavelet_dict`) | seuil des coefficients proportionnel à σ |
 | `bm3d` | seuil proportionnel à σ (étape 1), σ² comme variance du bruit dans le filtre de Wiener (étape 2) |
 | `nl_bayes`, `nl_bayes_ipol` | σ² comme variance du bruit dans deux filtres de Wiener, γσ comme seuil des zones plates ([NL_BAYES.md](NL_BAYES.md) §7) |
+| `nl_bayes_cfa` | βσ² dans U·C·Uᵀ + βσ²I, bruit de la mosaïque (1 après stabilisation) ([NL_BAYES.md](NL_BAYES.md) §13) |
 | `nl_ridge`, `nl_ridge_inria` | nσ² dans les deux régressions de patchs, Θ₁ et Θ₂ (§2.7) |
 | `drunet`, `gsdrunet` | carte de niveau de bruit en entrée du réseau |
 | `swinir` | choix d'un jeu de poids entraîné (15, 25 ou 50) |
