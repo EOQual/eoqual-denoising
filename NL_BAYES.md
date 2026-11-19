@@ -424,8 +424,12 @@ grandeurs (β₁σ², β₂σ²) : s et un seul β suffisent.
   étape 1 dans l'espace Y₀U₀V₀ rendu orthonormé (σ conservé sur chaque
   canal transformé), groupes formés sur Y₀ seul et appliqués à U₀ et V₀,
   filtrage canal par canal ; étape 2 en RGB, groupes formés sur la distance
-  moyenne des trois canaux de l'estimée de base ;
-- **`"rgb"`** : les deux étapes en RGB, groupes communs aux trois canaux ;
+  moyenne des trois canaux de l'estimée de base (formule 13), **canaux
+  filtrés ensemble** : patchs de 3k² valeurs et covariance commune
+  (tableau 1 de l'article : deux groupes 3D en tout à l'étape 2, contre deux
+  par canal pour BM3D ; filtrés canal par canal jusqu'à la version 0.4.0) ;
+- **`"rgb"`** : les deux étapes en RGB, groupes communs aux trois canaux,
+  étape 2 à canaux filtrés ensemble ;
 - **`"channel"`** : chaque canal débruité indépendamment, comme une image
   en niveaux de gris.
 
@@ -551,16 +555,20 @@ plusieurs cœurs.
 | Traitement | PSNR σ = 0,05 | PSNR σ = 0,1 | PSNR σ = 0,2 | SSIM σ = 0,1 | Temps (σ = 0,1) |
 |---|---|---|---|---|---|
 | *(image bruitée)* | 26,02 | 20,00 | 13,98 | 0,313 | — |
-| **`yuv` (article, défaut)** | **36,24** | **33,07** | **29,85** | 0,910 | **1,65 s** |
-| `rgb` | 36,02 | 32,77 | 29,31 | **0,912** | 1,92 s |
-| `channel` | 35,76 | 32,23 | 28,61 | 0,906 | 4,13 s |
-| IPOL C++, canal par canal | 35,44 | 31,83 | 28,17 | 0,872 | 0,76 s |
+| **`yuv` (article, défaut)** | **37,03** | **33,68** | **30,47** | 0,912 | **1,74 s** |
+| `rgb` | 36,71 | 33,31 | 29,82 | **0,914** | 1,89 s |
+| `channel` | 35,76 | 32,23 | 28,61 | 0,906 | 4,45 s |
+| IPOL C++, canal par canal | 35,41 | 31,82 | 28,15 | 0,872 | 0,34 s |
 
-Former les groupes sur la luminance Y₀ (moyenne des trois canaux, donc
-moins bruitée) donne des groupes plus fiables, que les canaux de
-chrominance partagent : +0,8 dB sur le canal par canal à σ = 0,1, pour un
-temps divisé par 2,5. `rgb` récupère une partie du gain (+0,5 dB) : il
-vient surtout du partage des groupes entre canaux.
+Mesures de la version 0.4.1 (étape 2 à canaux filtrés ensemble ; jusqu'à
+0.4.0, `yuv` donnait 36,24 / 33,07 / 29,85 et `rgb` 36,02 / 32,77 /
+29,31). Former les groupes sur la luminance Y₀ (moyenne des trois canaux,
+donc moins bruitée) donne des groupes plus fiables, que les canaux de
+chrominance partagent, et filtrer les trois canaux ensemble à l'étape 2
+exploite leurs corrélations : +1,3 à +1,9 dB sur le canal par canal, pour
+un temps divisé par 2,6. `rgb` fait +1,0 à +1,2 dB. La ligne IPOL est
+l'exécutable appelé canal par canal (l'appel de `nl_bayes_ipol` ne traite
+que les niveaux de gris) : elle ne représente pas son mode couleur.
 
 Reproduire : `python examples/nl_bayes_benchmark.py --out nl_bayes.md`.
 
@@ -642,6 +650,11 @@ Libérer β₁ et β₂ en plus de `sigma_scale` rapporte au plus 0,04 dB en
 niveaux de gris.
 
 ### 11.5 Sensibilité, RGB démosaïqué, zones sombres
+
+> **À refaire.** Les études couleur des §11.5 à §11.7 ont été mesurées
+> avant la version 0.4.1, avec l'étape 2 couleur filtrée canal par canal.
+> La correction améliore `yuv` de 0,6 à 0,8 dB (§11.2) : les ordres de
+> grandeur et le classement des paramètres sont à vérifier.
 
 Jeu « orthophoto, RGB démosaïqué » (§10), `examples/nl_bayes_sensitivity.py
 --parts rgb`. Erreurs en niveaux d'affichage (gamma 1/2,2, échelle 0-255),

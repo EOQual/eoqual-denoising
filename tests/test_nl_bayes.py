@@ -92,3 +92,19 @@ def test_nl_bayes_parameter_nesting():
     assert (p["N1"], p["n1"], p["n2"]) == (90, 35, 25)
     p = resolve_parameters(25.0, False, {"k1": 7, "N1": 20})
     assert p["N1"] == 50  # porté à k² + 1 : covariance 49×49 inversible
+
+
+def test_nl_bayes_color_second_step_is_joint_and_improves():
+    """
+    Étape 2 couleur à canaux filtrés ensemble (tableau 1 de l'article : deux
+    groupes 3D en tout). Filtrée canal par canal (≤ 0.4.0), elle dégradait
+    l'estimée de base à faible bruit ; elle doit l'améliorer.
+    """
+    from eoqual.denoising import add_gaussian_noise, astronaut_rgb
+
+    clean_rgb = astronaut_rgb(128)
+    s = 5.0 / 255.0
+    noisy_rgb = add_gaussian_noise(clean_rgb, s, seed=0)
+    basic = denoise(noisy_rgb, "nl_bayes", sigma=s, return_basic=True)
+    final = denoise(noisy_rgb, "nl_bayes", sigma=s)
+    assert psnr(clean_rgb, final, data_range=1.0) > psnr(clean_rgb, basic, data_range=1.0) + 0.2

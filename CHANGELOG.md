@@ -6,6 +6,10 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+0.4.1 (2026-11-19)
+
+:   -   **Correction de NL-Bayes couleur** (`color_mode="yuv"` et `"rgb"`) : à l'étape 2, les trois canaux sont maintenant filtrés **ensemble** (patchs de 3k² valeurs, covariance commune), comme l'indique le tableau 1 de l'article (deux groupes 3D en tout à l'étape 2). Ils étaient filtrés canal par canal, ce qui pouvait dégrader l'estimée de l'étape 1 à faible bruit. Gain en couleur : +0,6 à +0,8 dB sur le benchmark (`NL_BAYES.md` §11.2) ; niveaux de gris et mode `channel` inchangés. **Changement de résultat** pour toute image couleur. Les études couleur de `NL_BAYES.md` §11.5 à §11.7, mesurées avant, sont signalées à refaire.
+
 0.4.0 (2026-11-18)
 
 :   -   **Espace d'optimisation de `nl_bayes` réduit à trois dimensions** : `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90], départ `sigma_scale` = 1, β₂ = 1,2, N₂ = 30. β₁, γ, τ₀, `window_factor`, `use_area1`, `use_area2` passent dans `fixed`. **Changement de comportement** : l'ancien espace (7 dimensions : `sigma_scale`, k₁, k₂, α, τ₀, critères homogènes) ne s'applique plus par défaut ; 15 à 25 évaluations suffisent.

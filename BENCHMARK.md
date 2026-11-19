@@ -204,7 +204,7 @@ directement est une erreur : la stabilisation de variance gagne 4 à
 | Qualité maximale, bruit modéré (σ ≤ 0,2) | `restormer` | Légèrement devant, mais aveugle : hors de son domaine il échoue |
 | Image brute de capteur, faible flux | `vst_denoise(..., "drunet")` | +8 à +10 dB sur l'application directe |
 | Sans PyTorch | `nl_bayes` | Meilleure méthode classique par défaut (PSNR et SSIM), MIT, aucune dépendance |
-| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +0,8 à +1,2 dB sur le canal par canal, 2,5 fois plus rapide (§8.2) |
+| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +1,3 à +1,9 dB sur le canal par canal, 2,6 fois plus rapide ([NL_BAYES.md](NL_BAYES.md) §11.2) |
 | Sans PyTorch, référence disponible | `nl_ridge` optimisé | 32,50 dB une fois réglé (§3) |
 | Sans PyTorch, temps compté | `nl_means` | 7 fois plus rapide que `nl_bayes`, 1,6 dB de moins |
 | Traitement massif, temps réel | `tv_chambolle` | ~10 fois plus rapide que `nl_means`, 1 dB de moins |

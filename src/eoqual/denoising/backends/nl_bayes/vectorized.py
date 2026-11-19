@@ -21,9 +21,11 @@ Couleur (article §3.3, §3.4, §5.1.1, tableau 8) — paramètre ``color_mode``
 - ``"yuv"`` (défaut pour une image 3 canaux, choix de l'article) :
   étape 1 dans l'espace orthonormé Y₀U₀V₀, regroupement sur Y₀ seul, mêmes
   groupes appliqués à U₀ et V₀, filtrage canal par canal ; étape 2 en RGB,
-  regroupement sur la distance moyenne des trois canaux de u_basic,
-  filtrage canal par canal avec les mêmes groupes ;
-- ``"rgb"`` : les deux étapes en RGB, regroupement sur les trois canaux ;
+  regroupement sur la distance moyenne des trois canaux de u_basic
+  (formule 13), **canaux filtrés ensemble** : patchs de 3k² valeurs et
+  covariance commune (tableau 1 : deux groupes 3D en tout à l'étape 2) ;
+- ``"rgb"`` : les deux étapes en RGB, regroupement sur les trois canaux,
+  étape 2 avec canaux filtrés ensemble ;
 - ``"channel"`` : chaque canal débruité indépendamment comme une image en
   niveaux de gris (groupes différents par canal).
 
@@ -152,6 +154,7 @@ def _step(
     step: int,
     chunk: int,
     n_threads: int = 1,
+    joint: bool = False,
 ) -> np.ndarray:
     """
     Une étape de NL-Bayes, par lots, répartis sur ``n_threads`` fils
@@ -159,6 +162,9 @@ def _step(
 
     ``noisy`` : (C, H, W) canaux filtrés ; ``guide`` : (G, H, W) canaux
     servant au regroupement (distance moyenne sur les G canaux).
+    ``joint`` : canaux filtrés ensemble (patchs de C·k² valeurs, covariance
+    commune), comme l'étape 2 couleur de l'article (tableau 1 : deux groupes
+    3D en tout) ; sinon canal par canal avec les mêmes groupes.
     """
     nc, h, w = noisy.shape
     ph, pw = h - k + 1, w - k + 1
@@ -166,6 +172,12 @@ def _step(
     d = k * k
     pn = [_flat_patches(noisy[c], k) for c in range(nc)]
     pg = [_flat_patches(guide[g], k) for g in range(guide.shape[0])]
+    n_out = nc
+    if joint:
+        # Composante (canal c, pixel p) à l'indice c·k² + p ; distance = moyenne sur les canaux (formule 13).
+        pn = [np.ascontiguousarray(np.concatenate(pn, axis=1))]
+        pg = [np.ascontiguousarray(np.concatenate(pg, axis=1))]
+        d, nc = nc * d, 1
     ni, nj = min(n, ph), min(n, pw)
     off_i, off_j = np.arange(ni), np.arange(nj)
     m_win = ni * nj
@@ -234,7 +246,11 @@ def _step(
         cnt = sum(r[1] for r in results)
 
     out = np.empty_like(noisy, dtype=np.float64)
-    for c in range(nc):
+    if joint:
+        k2 = d // n_out
+        acc = acc[0].reshape(npos, n_out, k2).transpose(1, 0, 2)
+        d = k2
+    for c in range(n_out):
         acc_p = acc[c].reshape(ph, pw, d)
         num = np.zeros((h, w))
         den = np.zeros((h, w))
@@ -272,10 +288,10 @@ def nl_bayes_vectorized(
         )
         return basic
 
-    def second(noisy_c: np.ndarray, basic_c: np.ndarray, p: dict):
+    def second(noisy_c: np.ndarray, basic_c: np.ndarray, p: dict, joint: bool = False):
         return _step(
             noisy_c, basic_c, sigma_255, p["k2"], p["n2"], p["N2"], p["beta2"], p["gamma"],
-            use_area2, p["tau0"], True, step, chunk, n_threads,
+            use_area2, p["tau0"], True, step, chunk, n_threads, joint,
         )
 
     if u.ndim == 2:
@@ -301,4 +317,4 @@ def nl_bayes_vectorized(
         basic = run(rgb, None, p)
     if return_basic:
         return np.moveaxis(basic, 0, -1)
-    return np.moveaxis(second(rgb, basic, p), 0, -1)
+    return np.moveaxis(second(rgb, basic, p, joint=True), 0, -1)
