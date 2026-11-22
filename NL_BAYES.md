@@ -415,6 +415,17 @@ au §11.4 et au §11.5 : peu.
 Sans critère homogène (γ absent ou inactif), il ne reste que deux
 grandeurs (β₁σ², β₂σ²) : s et un seul β suffisent.
 
+![σ, sigma_scale, β et γ ; rôle de τ₀](docs/figures/nl_bayes/parametrisation.png)
+
+*À gauche : une seule chaîne σ → `sigma_scale` → β₁σ², β₂σ², γσ. À
+droite : à l'étape 2, le groupe contient les patchs à distance
+≤ max(τ₀, d_N) — exactement N₂ dans une zone texturée, bien plus dans une
+zone plate (ici 615 pour N₂ = 60). Figure : `examples/nl_bayes_figures.py`.*
+
+`optimize_parameters` avertit si un espace de recherche laisse libres
+ensemble `sigma_scale`, β₁, β₂ et γ (ou `sigma_scale`, β₁ et β₂ quand le
+critère des zones homogènes est désactivé aux deux étapes).
+
 ## 8. Couleur et images démosaïquées
 
 ### 8.1 Trois traitements de la couleur
@@ -950,6 +961,66 @@ effet faible, et laissait de côté β₂ et N₂.
   fort flux (§11.5).
 - Le réglage de σ et du modèle de bruit (stabilisation, facteur C) suit
   `OPTIMISATION.md` §2.
+
+### 12.4 Contraintes et redondances de l'espace de recherche
+
+**Contraintes de la méthode.** L'article ne borne aucun paramètre ; les
+seules contraintes viennent du calcul :
+
+| Contrainte | Pourquoi | Traitement |
+|---|---|---|
+| N₁ ≥ k₁² + 1 | la covariance de l'étape 1 est inversée telle quelle ; avec N ≤ k² elle est singulière (patchs laissés bruités) | N porté à k² + 1 par `resolve_parameters` (§6.3) |
+| N₂ ≥ k₂² + 1 | sans nécessité : l'étape 2 inverse C_b + β₂σ²I, toujours inversible | appliqué aussi, par symétrie ; borne basse de l'espace : 15 |
+| étape 2 couleur | patchs de 3k₂² valeurs (canaux filtrés ensemble, §8.1), même raison qu'au-dessus : aucune condition sur N₂ | — |
+| `nl_bayes_cfa` | inverse U·C·Uᵀ + βσ²I (d × d), toujours inversible : aucune condition sur N | N ≥ 2 |
+| fenêtre ≥ patch | n = α·k, α ≥ 1 | α fixé à 7 |
+| image ≥ patch | patchs extraits dans l'image | erreur explicite |
+| échelle de τ₀ et des paliers | exprimés sur [0, 255] | `data_range` (§7.2) |
+
+**Redondances de la paramétrisation** (évitables : l'article règle σ
+directement, sans `sigma_scale`) :
+
+| Redondance | Cause | Traitement |
+|---|---|---|
+| `sigma_scale` × β₁ × β₂ × γ | le calcul ne dépend que de β₁σ², β₂σ², γσ (§7.3) | β₁ et γ fixés dans l'espace par défaut ; avertissement d'`optimize_parameters` s'ils sont tous libres |
+| `sigma_scale` × β₁ × β₂, sans critère homogène | il ne reste que β₁σ², β₂σ² | idem, avertissement si `use_area1` et `use_area2` sont fixés à faux |
+
+**τ₀ est un plancher, jamais un remplaçant de N.** À l'étape 2, le
+groupe contient les patchs à distance ≤ max(τ₀, d_N₂) : au moins N₂
+patchs, davantage dans les zones plates (figure du §7.3). Un seuil qui
+*remplacerait* N (groupe = patchs à distance ≤ τ, quel que soit N) ferait
+de N un paramètre sans effet et pourrait réduire un groupe au seul patch
+de référence dans les zones texturées. À l'étape 1, l'article n'a pas de
+seuil : N₁ plus proches. C'est ce que fait `nl_bayes`, et ce qu'il faut
+vérifier dans toute autre implémentation avant d'en optimiser N.
+
+### 12.5 Correspondance avec nlbayes-ext
+
+Le calcul de `nl_bayes` et `nl_bayes_cfa` est fait par la bibliothèque
+**nlbayes-ext** (https://github.com/oam31/nlbayes-ext). Les deux exposent
+les mêmes paramètres de la méthode (`k1`, `k2`, `N1`, `N2`, `beta1`,
+`beta2`, `gamma`, `tau0`, `window_factor`, `use_area1`, `use_area2`,
+`color_mode`, `engine`, `step` ; pour la mosaïque `pattern`, `k`, `N`,
+`beta`, `n_iter`, `pilot`, `use_area`…) ; seuls le bruit et le réglage de
+σ s'écrivent différemment :
+
+| Besoin | eoqual-denoising | nlbayes-ext |
+|---|---|---|
+| bruit blanc de σ connu | `denoise(img, "nl_bayes", sigma=s)` | `denoise_gray(img, sigma=s)`, `denoise_rgb(img, sigma=s)` |
+| σ estimé | `sigma=None` : estimateur de scikit-image (Donoho & Johnstone), moyenne des canaux en couleur | `sigma=None` : même principe (coefficients de Haar diagonaux), sans scikit-image ; valeurs un peu différentes |
+| bruit du capteur var = a + b·L | `vst_denoise(img, "nl_bayes", gain=1/b, read_noise_dn=√a, offset_dn=o)` | `denoise_rgb(img, noise=(a, b), offset=o)` |
+| facteur de σ après stabilisation | `noise_factor=C` (`vst_denoise`) | `sigma_scale=C` |
+| facteur de σ dans l'optimisation | dimension `sigma_scale` de l'espace | `sigma_scale` (argument) |
+| inverse de la stabilisation | `inverse=` de `vst_denoise` | `inverse=` |
+| mosaïque de Bayer | `denoise(m, "nl_bayes_cfa", sigma=s, pattern=…)` ; bruit du capteur par `vst_denoise` | `denoise_cfa(m, sigma=s)` ou `denoise_cfa(m, noise=(a, b))` |
+
+À σ donné, ou avec le modèle de bruit (a, b), les sorties sont
+identiques au bit près (vérifié, y compris `vst_denoise` contre
+`noise=(a, b)`) ; σ estimé diffère un peu, l'estimateur n'étant pas le
+même. Un réglage
+trouvé par `optimize_parameters` (`best_kwargs`) se transpose donc
+directement : `sigma` × `sigma_scale` devient `sigma` (bruit blanc) ou
+`sigma_scale` (avec `noise`), les autres paramètres gardent leur nom.
 
 ## 13. `nl_bayes_cfa` : débruiter et démosaïquer depuis la mosaïque
 

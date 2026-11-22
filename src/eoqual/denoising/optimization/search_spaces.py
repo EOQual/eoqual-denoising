@@ -50,6 +50,7 @@ __all__ = [
     "load_search_space",
     "validate_search_space",
     "build_constraint",
+    "redundancy_warnings",
 ]
 
 _SCALES = (None, "sigma", "inverse_sigma")
@@ -172,6 +173,45 @@ def build_constraint(space: dict) -> Callable[[list], bool] | None:
         return all(f(env) for f in funcs)
 
     return constraint
+
+
+#: Groupes de réglages redondants : le calcul ne dépend que de produits de
+#: ces réglages, une direction de l'espace est sans effet s'ils sont tous
+#: libres. NL-Bayes : β₁σ², β₂σ², γσ (NL_BAYES.md §7.3) ; sans critère des
+#: zones homogènes, γ ne compte plus et β₁σ², β₂σ² suffisent.
+_REDUNDANT = {
+    "nl_bayes": (("sigma_scale", "beta1", "beta2", "gamma"), ("sigma_scale", "beta1", "beta2")),
+}
+
+
+def redundancy_warnings(space: dict, method: str) -> list[str]:
+    """
+    Avertissements sur les réglages redondants libres ensemble dans ``space``.
+
+    Un réglage est « libre » s'il est une dimension de ``search_space``
+    (une catégorie unique compte comme figée). Pour NL-Bayes, le groupe sans
+    γ ne s'applique que si le critère des zones homogènes est désactivé aux
+    deux étapes (``use_area1`` et ``use_area2`` à faux dans ``fixed``).
+    """
+    groups = _REDUNDANT.get(method)
+    if not groups:
+        return []
+    free = {d["name"] for d in space.get("search_space", [])
+            if not (d["type"] == "categorical" and len(d["categories"]) == 1)}
+    fixed = space.get("fixed", {})
+    no_area = fixed.get("use_area1") is False and fixed.get("use_area2") is False
+    out = []
+    for i, group in enumerate(groups):
+        if i == 1 and not no_area:
+            continue
+        if set(group) <= free:
+            out.append(
+                f"{method} : {', '.join(group)} sont optimisés ensemble alors que le calcul ne dépend que de "
+                "leurs produits (β·σ², γ·σ) : une direction de l'espace est sans effet. Fixer l'un d'eux "
+                "(β₁ ou γ, NL_BAYES.md §7.3)."
+            )
+            break
+    return out
 
 
 def validate_search_space(space: dict, name: str = "espace") -> dict:

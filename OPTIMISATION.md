@@ -85,7 +85,7 @@ utilise σ multiplié par un de ses propres paramètres, multiplier σ par
 §12.
 
 **Budget.** 15 à 25 évaluations pour `sigma_scale` seul, autant pour
-les 3 dimensions de NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §12). Toujours valider le réglage sur une autre
+les 3 dimensions de NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §12 ; contraintes et redondances : §12.4). `optimize_parameters` avertit quand des réglages redondants sont libres ensemble (NL-Bayes : `sigma_scale`, β₁, β₂, γ). Toujours valider le réglage sur une autre
 image que celle qui a servi à l'optimiser (§6).
 
 ### 2.4 Image démosaïquée : optimiser C, pas (a, b)

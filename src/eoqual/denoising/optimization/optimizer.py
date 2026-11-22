@@ -54,7 +54,7 @@ from typing import Any, Callable
 import numpy as np
 
 from ..utils import check_image, resolve_sigma
-from .search_spaces import build_constraint, get_search_space, validate_search_space
+from .search_spaces import build_constraint, get_search_space, redundancy_warnings, validate_search_space
 
 __all__ = ["optimize_parameters", "OptimizationResult", "default_n_jobs", "METRICS", "PENALTY"]
 
@@ -405,6 +405,11 @@ def optimize_parameters(
     space = validate_search_space(search_space or get_search_space(method), method)
     if sigma_scale0 is not None:
         space = _with_sigma_scale0(space, float(sigma_scale0), method)
+    for message in redundancy_warnings(space, method):
+        import warnings
+
+        warnings.warn(message, stacklevel=2)
+        logger.warning(message)
     dims = space["search_space"]
     names = [d["name"] for d in dims]
     sigma_val = 1.0 if vst else _initial_sigma(noisy, sigma)

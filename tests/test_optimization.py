@@ -365,3 +365,19 @@ def test_demosaicked_chain_vst_color_with_kappa_start(rgb_pair):
     )
     assert res.history[0]["sigma_scale"] == pytest.approx(c0)
     assert res.best_kwargs["sigma"] == pytest.approx(res.best_params["sigma_scale"])
+
+
+
+def test_redundancy_warnings_nl_bayes():
+    """sigma_scale, β₁, β₂ et γ tous libres : avertissement ; espace par défaut : aucun."""
+    from eoqual.denoising.optimization.search_spaces import redundancy_warnings
+
+    assert redundancy_warnings(get_search_space("nl_bayes"), "nl_bayes") == []
+    f = lambda n: {"name": n, "type": "float", "low": 0.5, "high": 1.5}  # noqa: E731
+    all_free = {"search_space": [f("sigma_scale"), f("beta1"), f("beta2"), f("gamma")]}
+    assert len(redundancy_warnings(all_free, "nl_bayes")) == 1
+    no_gamma = {"search_space": [f("sigma_scale"), f("beta1"), f("beta2")]}
+    assert redundancy_warnings(no_gamma, "nl_bayes") == []          # γσ distingue encore sigma_scale
+    no_gamma["fixed"] = {"use_area1": False, "use_area2": False}
+    assert len(redundancy_warnings(no_gamma, "nl_bayes")) == 1      # sans critère homogène, γ ne compte plus
+    assert redundancy_warnings(all_free, "nl_means") == []

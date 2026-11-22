@@ -174,6 +174,78 @@ def fig_gains():
     plt.close(fig)
 
 
+def _sorted_distances(img, i0, j0):
+    """Distances moyennes par pixel, triées, du patch (i0, j0) à tous les patchs de sa fenêtre."""
+    ref = img[i0:i0 + K, j0:j0 + K]
+    h = WIN // 2
+    return np.sort([np.mean((img[i:i + K, j:j + K] - ref) ** 2)
+                    for i in range(i0 - h, i0 + h + 1) for j in range(j0 - h, j0 + h + 1)])
+
+
+def _flat_and_textured(img):
+    """Patch de référence le plus plat et le plus texturé (écart-type local sur l'estimée de base)."""
+    h = WIN // 2
+    best = {}
+    for i in range(h, img.shape[0] - h - K, 6):
+        for j in range(h, img.shape[1] - h - K, 6):
+            v = float(np.std(img[i:i + K, j:j + K]))
+            if "flat" not in best or v < best["flat"][0]:
+                best["flat"] = (v, i, j)
+            if "tex" not in best or v > best["tex"][0]:
+                best["tex"] = (v, i, j)
+    return best["flat"][1:], best["tex"][1:]
+
+
+def fig_parametrisation(basic):
+    """σ, sigma_scale, β, γ (une seule chaîne) et rôle de τ₀ (plancher) dans la taille des groupes."""
+    from matplotlib.patches import FancyBboxPatch
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.5, 4.0), gridspec_kw={"width_ratios": [1.05, 1]})
+
+    def box(x, y, w, hgt, text, col=BLUE):
+        a1.add_patch(FancyBboxPatch((x, y), w, hgt, boxstyle="round,pad=0.01,rounding_size=0.02",
+                                    lw=1.2, edgecolor=col, facecolor="white"))
+        a1.text(x + w / 2, y + hgt / 2, text, ha="center", va="center", fontsize=8.5, color=INK)
+
+    def arrow(p0, p1):
+        a1.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-|>", mutation_scale=11, lw=1.1, color=INK2))
+
+    box(0.02, 0.52, 0.26, 0.22, "σ du bruit\n(1 après\nstabilisation)")
+    box(0.36, 0.52, 0.26, 0.22, "× sigma_scale\n→ σ transmis", ORANGE)
+    arrow((0.28, 0.63), (0.36, 0.63))
+    uses = [(0.88, "β₁·σ²\nétape 1"), (0.63, "β₂·σ²\nétape 2"), (0.38, "γ·σ\nzones homogènes")]
+    for y, t in uses:
+        box(0.72, y - 0.09, 0.26, 0.18, t, AQUA)
+        arrow((0.62, 0.63), (0.72, y))
+    a1.text(0.5, 0.08, "3 grandeurs, 4 réglages (sigma_scale, β₁, β₂, γ) : un réglage de trop.\n"
+            "Espace par défaut : β₁ et γ fixés, sigma_scale et β₂ optimisés (§7.3, §12).",
+            ha="center", va="center", fontsize=8, color=INK2)
+    a1.set_xlim(0, 1); a1.set_ylim(0, 1); a1.axis("off")
+    a1.set_title("Une seule chaîne σ → sigma_scale → β, γ", fontsize=9, color=INK)
+
+    tau0 = 4.0
+    for (i0, j0), col, lab in ((_flat_and_textured(basic)[0], AQUA, "zone plate"),
+                              (_flat_and_textured(basic)[1], ORANGE, "zone texturée")):
+        dist = _sorted_distances(basic, i0, j0)
+        tau = max(tau0, dist[N - 1])
+        size = int(np.sum(dist <= tau))
+        r = np.arange(1, dist.size + 1)
+        a2.loglog(r, np.maximum(dist, 1e-2), color=col, lw=1.6, label=f"{lab} : groupe de {size} patchs")
+        a2.plot([size], [max(tau, 1e-2)], "o", color=col, ms=5)
+    a2.axhline(tau0, color=INK2, lw=0.9, ls="--")
+    a2.text(1.3, tau0 * 1.25, "τ₀ = 4", fontsize=8, color=INK2)
+    a2.axvline(N, color=INK2, lw=0.9, ls=":")
+    a2.text(N * 1.08, 0.015, f"N₂ = {N}", fontsize=8, color=INK2)
+    a2.set_xlabel("rang du patch candidat (trié par distance)")
+    a2.set_ylabel("distance moyenne par pixel (estimée de base)")
+    a2.set_title("Étape 2 : groupe = distance ≤ max(τ₀, d_N) — au moins N patchs", fontsize=9, color=INK)
+    a2.grid(color=GRID, lw=0.6, which="both")
+    a2.legend(frameon=False, loc="upper left", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "parametrisation.png", dpi=130)
+    plt.close(fig)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     clean, noisy, basic, final = _images()
@@ -182,6 +254,7 @@ def main() -> None:
     fig_grouping(noisy, group)
     fig_covariance(noisy, clean, group)
     fig_gains()
+    fig_parametrisation(basic)
     print(f"figures écrites dans {OUT}")
 
 
