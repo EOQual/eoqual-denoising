@@ -6,6 +6,11 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
+Non publié
+
+:   -   `optimize_parameters` avertit d'une redondance de l'espace de recherche (`search_spaces.redundancy_warnings`, par exemple `sigma_scale` et tous les β libres ensemble).
+    -   **`NL_BAYES.md`** : contraintes de l'espace de recherche et redondances de la paramétrisation (§12.4), correspondance des paramètres avec nlbayes-ext (§12.5), figure `parametrisation.png` (§7.3).
+
 0.5.0 (2026-11-19)
 
 :   -   **Nouvelle méthode `nl_bayes_cfa`** : débruitage et démosaïçage conjoints d'une mosaïque de Bayer (H, W) → image RGB (H, W, 3). Estimateur d'un problème inverse linéaire à a priori gaussien (Yu, Sapiro & Mallat, 2012) sur les groupes NL-Bayes, passes successives (N = 60, 8 passes par défaut), critère des zones homogènes optionnel. Nouvelle catégorie `CFA_METHODS` dans le registre. Sur mosaïques simulées, +1,0 à +6,0 dB sur Hamilton-Adams + NL-Bayes, contre la vraie image (`NL_BAYES.md` §13).
