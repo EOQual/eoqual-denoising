@@ -6,9 +6,10 @@ dans `REFERENCE_TECHNIQUE.md`, annexe A.
 
 ## Version History
 
-Non publié
+0.6.0 (2026-11-23)
 
-:   -   `optimize_parameters` avertit d'une redondance de l'espace de recherche (`search_spaces.redundancy_warnings`, par exemple `sigma_scale` et tous les β libres ensemble).
+:   -   **nlbayes-ext v0.2.0** (dépendance du socle, était v0.1.0) : modèle de bruit par canal et traitement par tuiles disponibles dans la bibliothèque ; sorties de `nl_bayes` et `nl_bayes_cfa` inchangées avec les paramètres par défaut.
+    -   `optimize_parameters` avertit d'une redondance de l'espace de recherche (`search_spaces.redundancy_warnings`, par exemple `sigma_scale` et tous les β libres ensemble).
     -   **`NL_BAYES.md`** : contraintes de l'espace de recherche et redondances de la paramétrisation (§12.4), correspondance des paramètres avec nlbayes-ext (§12.5), figure `parametrisation.png` (§7.3).
 
 0.5.0 (2026-11-19)

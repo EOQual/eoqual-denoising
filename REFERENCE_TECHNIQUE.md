@@ -170,7 +170,7 @@ est la plus rapide du socle mais la moins performante en PSNR.
 **Fichiers** : `backends/nl_bayes/native.py` (adaptateur) ; le calcul est
 fait par la bibliothèque **nlbayes-ext** (MIT, même auteur,
 https://github.com/oam31/nlbayes-ext, numpy et scipy seulement),
-dépendance du socle épinglée sur `v0.1.0`. `nl_bayes_cfa` passe de même
+dépendance du socle épinglée sur `v0.2.0`. `nl_bayes_cfa` passe de même
 par `backends/nl_bayes/cfa.py`.
 **Références** : Buades, Lebrun & Morel (2013, SIAM) ; article IPOL de
 Lebrun, Buades & Morel (2013), **seule source utilisée** (clean-room :
