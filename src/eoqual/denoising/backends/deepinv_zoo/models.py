@@ -20,7 +20,7 @@ Convention commune : ``sigma`` dans les unités de l'image (estimé s'il
 est absent) ; l'image est ramenée dans [0, 1] via ``data_range`` (par
 défaut son min/max) et ``sigma`` converti en conséquence.
 
-Références (complètes dans ``BIBLIOGRAPHY.md``) :
+Références (complètes dans ``docs/technique/bibliographie.md``) :
 
 - EPLL — Zoran & Weiss (2011), ICCV ;
 - TGV — Bredies, Kunisch & Pock (2010), SIAM J. Imaging Sci. ; solveur
@@ -131,7 +131,7 @@ def tgv_denoise(
         Poids de régularisation, en unités de l'image (plus grand = plus
         lisse). deepinv en déduit λ₁ = 0,1·weight (ordre 1) et
         λ₂ = 0,15·weight (ordre 2). Par défaut ``7.5 * sigma`` (calibré
-        empiriquement, voir REFERENCE_TECHNIQUE.md §3.6).
+        empiriquement, voir docs/technique/reference.md §3.6).
     data_range : tuple(float, float), optional
         Dynamique ``(min, max)`` ramenée à [0, 1]. Par défaut, le min/max
         de l'image.
@@ -181,7 +181,7 @@ def wavelet_dict_denoise(
         uniquement à fixer ``threshold`` par défaut.
     threshold : float, optional
         Seuil doux, en unités de l'image. Par défaut ``1.25 * sigma`` (calibré
-        empiriquement, voir REFERENCE_TECHNIQUE.md §3.7).
+        empiriquement, voir docs/technique/reference.md §3.7).
     wavelets : tuple of str
         Bases d'ondelettes du dictionnaire. Par défaut ``("db8", "db4")``.
     level : int

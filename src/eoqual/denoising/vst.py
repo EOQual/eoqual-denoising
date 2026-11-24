@@ -299,7 +299,7 @@ def vst_denoise(
         σ donné à la méthode dans le domaine stabilisé, où le bruit vaut 1
         par construction. Laisser 1 pour une image brute. Pour une image
         démosaïquée, le facteur C = √κ_Y + 0,2 du démosaïqueur
-        (REFERENCE_TECHNIQUE.md §6.4) : la transformée et son inverse
+        (docs/technique/reference.md §6.4) : la transformée et son inverse
         restent exactes, seul le niveau de débruitage change. Avertissement
         hors de ``NOISE_FACTOR_RANGE``.
     **kwargs

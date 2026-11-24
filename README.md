@@ -6,17 +6,17 @@
 
 Collection de méthodes de débruitage d'images, pensée pour l'observation
 de la Terre, avec stabilisation de variance pour le bruit
-poisson-gaussien des images brutes de capteur. Voir **[REFERENCE_TECHNIQUE.md](REFERENCE_TECHNIQUE.md)**
+poisson-gaussien des images brutes de capteur. Voir **[référence technique](docs/technique/reference.md)**
 pour le détail de chaque méthode (principe, implémentation, limites,
 performances indicatives) et pour le rôle du niveau de bruit σ,
-**[NL_BAYES.md](NL_BAYES.md)** pour NL-Bayes en détail (mathématiques,
+**[NL-Bayes](docs/technique/nl-bayes.md)** pour NL-Bayes en détail (mathématiques,
 paramètres, études de sensibilité, réglage),
-**[OPTIMISATION.md](OPTIMISATION.md)** pour le réglage des paramètres
+**[optimisation](docs/technique/optimisation.md)** pour le réglage des paramètres
 (dont σ et le modèle de bruit) sur une image de référence,
 **[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)**
 pour l'audit complet des licences,
-**[BIBLIOGRAPHY.md](BIBLIOGRAPHY.md)** pour les publications de
-référence, et **[BENCHMARK.md](BENCHMARK.md)** pour la comparaison
+**[bibliographie](docs/technique/bibliographie.md)** pour les publications de
+référence, et **[benchmark](docs/technique/benchmark.md)** pour la comparaison
 chiffrée des méthodes (réglages par défaut et optimisés).
 
 ## Sommaire
@@ -70,7 +70,7 @@ copyleft :
 Ces deux composants ne servent qu'à comparer avec le code de référence :
 NL-Bayes et NL-Ridge sont fournis **dans le socle** (`nl_bayes`,
 `nl_ridge`), réimplémentés sous MIT depuis les articles, sans dépendance,
-avec des résultats équivalents (`BENCHMARK.md`).
+avec des résultats équivalents ([benchmark](docs/technique/benchmark.md)).
 
 Lire les avertissements de [THIRD_PARTY_LICENSES.md §2.3](THIRD_PARTY_LICENSES.md#23-composants-externes-fournis-par-lutilisateur-)
 avant de les utiliser dans un logiciel distribué ou un service.
@@ -126,7 +126,7 @@ le σ du capteur laisse des taches colorées, et estimer σ sur l'image
 démosaïquée en trouve la moitié. Recette (stabilisation avec le modèle
 de bruit du capteur ``σ² = a + b·L`` (a plancher, b pente ; PTC d'eoqual-measure), puis NL-Bayes couleur avec
 ``σ = √κ_Y + 0.2`` selon le démosaïqueur) : voir
-[REFERENCE_TECHNIQUE.md §6](REFERENCE_TECHNIQUE.md#6-cas-particulier--débruiter-une-image-démosaïquée),
+[référence technique §6](docs/technique/reference.md#6-cas-particulier--débruiter-une-image-démosaïquée),
 et la référence technique d'eoqual-demosaicing, chapitre 11.
 
 ### Optimiser les paramètres sur une image de référence
@@ -143,11 +143,11 @@ Optimisation bayésienne (scikit-optimize), séquentielle ou parallèle,
 avec journal CSV et figures de diagnostic. Elle fonctionne aussi en
 chaîne GAT pour une image brute (`vst=`). En ligne de commande :
 `examples/optimize_parameters.py`. Voir
-[OPTIMISATION.md](OPTIMISATION.md).
+[optimisation](docs/technique/optimisation.md).
 
 À faible flux, le gain sur l'application directe d'un débruiteur
 gaussien atteint +2 à +10 dB (voir
-[REFERENCE_TECHNIQUE.md §5](REFERENCE_TECHNIQUE.md#5-bruit-poisson-gaussien--stabilisation-de-variance)).
+[référence technique §5](docs/technique/reference.md#5-bruit-poisson-gaussien--stabilisation-de-variance)).
 
 `sigma` est l'écart-type du bruit **dans les unités de l'image** (comptes
 numériques, réflectance...). S'il est omis, il est estimé sur l'image.
@@ -164,7 +164,7 @@ denoise(noisy, "bm3d", sigma=0.1, profile="refilter")
 
 Les arguments de chaque méthode sont dans sa docstring
 (`help(d.nl_bayes_denoise)`) et dans
-[REFERENCE_TECHNIQUE.md](REFERENCE_TECHNIQUE.md).
+[référence technique](docs/technique/reference.md).
 
 Exemples prêts à l'emploi dans `examples/` :
 
@@ -176,9 +176,9 @@ Exemples prêts à l'emploi dans `examples/` :
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode |
 | `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ |
 | `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres (orthophotos, RGB démosaïqué) |
-| `nl_bayes_figures.py` | figures explicatives de `NL_BAYES.md` |
+| `nl_bayes_figures.py` | figures explicatives de [NL-Bayes](docs/technique/nl-bayes.md) |
 | `nl_bayes_cfa_study.py` | `nl_bayes_cfa` (mosaïque → RGB) contre Hamilton-Adams puis NL-Bayes, contre la vraie image |
-| `benchmark.py`, `nl_bayes_benchmark.py` | reproduire `BENCHMARK.md` |
+| `benchmark.py`, `nl_bayes_benchmark.py` | reproduire [benchmark](docs/technique/benchmark.md) |
 
 ---
 
@@ -197,7 +197,7 @@ passer par `vst_denoise`).
 | `tv_bregman` | — | Variation totale (ROF), solveur split Bregman | BSD-3 (scikit-image) |
 | `wavelet` | — | Seuillage des coefficients d'ondelettes (BayesShrink/VisuShrink) | BSD-3 (scikit-image) |
 | `nl_bayes` | — | Estimateur bayésien gaussien non local sur groupes de patchs, deux étapes ; **couleur** (Y₀U₀V₀ de l'article, RGB, canal par canal) | MIT (réimplémentation depuis l'article IPOL) |
-| `nl_bayes_cfa` | — | **Mosaïque de Bayer → RGB** : débruite et démosaïque ensemble ; estimateur gaussien de Yu, Sapiro & Mallat (PLE) sur les groupes NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §13) | MIT (réimplémentation depuis les articles) |
+| `nl_bayes_cfa` | — | **Mosaïque de Bayer → RGB** : débruite et démosaïque ensemble ; estimateur gaussien de Yu, Sapiro & Mallat (PLE) sur les groupes NL-Bayes ([NL-Bayes](docs/technique/nl-bayes.md) §13) | MIT (réimplémentation depuis les articles) |
 | `nl_ridge` | — | Combinaisons linéaires de patchs similaires, poids en forme fermée (SURE puis ridge) | MIT (réimplémentation depuis les articles) |
 | `drunet` | `deep` | Réseau U-Net résiduel conditionné par σ, poids pré-entraînés | BSD-3 (deepinv) |
 | `swinir` | `deep` | Transformeur à fenêtres glissantes, poids par niveau de bruit (15/25/50) | Apache-2.0 (poids) / BSD-3 |
@@ -211,7 +211,7 @@ passer par `vst_denoise`).
 | `nl_bayes_ipol` | exécutable externe | Même méthode, implémentation C++ de référence IPOL (quantification 8 bits) | ⚠️ **GPL-3.0+** (IPOL) |
 
 Détail de chaque méthode et performances indicatives :
-**[REFERENCE_TECHNIQUE.md](REFERENCE_TECHNIQUE.md)**.
+**[référence technique](docs/technique/reference.md)**.
 
 **Une méthode est absente** (WNLB : source sans licence, aucune
 publication identifiée) : voir

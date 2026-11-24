@@ -264,7 +264,7 @@ def _with_sigma_scale0(space: dict, s0: float, method: str) -> dict:
     """
     Copie de l'espace où le point de départ de ``sigma_scale`` vaut ``s0``
     (ex. C = √κ_Y + 0.2 pour une image démosaïquée, voir
-    OPTIMISATION.md §2.4). Les bornes sont élargies si besoin pour
+    docs/technique/optimisation.md §2.4). Les bornes sont élargies si besoin pour
     contenir [0,7·s0 ; 1,4·s0].
     """
     import copy
@@ -373,7 +373,7 @@ def optimize_parameters(
     sigma_scale0 : float, optional
         Point de départ de la dimension ``sigma_scale`` (bornes élargies si
         besoin à [0,7 ; 1,4] × cette valeur). Cas type : image démosaïquée,
-        ``sigma_scale0 = √κ_Y + 0.2`` (OPTIMISATION.md §2).
+        ``sigma_scale0 = √κ_Y + 0.2`` (docs/technique/optimisation.md §2).
     space_constraint : callable, optional
         Contrainte sur les points tirés : reçoit une liste de valeurs (ordre
         des dimensions) et renvoie ``True`` si le point est valide. Les

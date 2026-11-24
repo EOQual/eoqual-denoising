@@ -99,7 +99,7 @@ def main() -> int:
         sigma_scale0 = float(np.sqrt(args.kappa_y) + 0.2)
         print(f"image démosaïquée : départ sigma_scale = √{args.kappa_y:g} + 0.2 = {sigma_scale0:.3f}")
         # Sans VST, σ sert au débruitage ; estimé sur l'image démosaïquée, il
-        # vaut environ la moitié du vrai σ (REFERENCE_TECHNIQUE.md §6.6).
+        # vaut environ la moitié du vrai σ (docs/technique/reference.md §6.6).
         if args.sigma is None and args.vst_gain is None:
             logging.warning(
                 "image démosaïquée sans --sigma : σ estimé sur l'image, biaisé vers le bas "

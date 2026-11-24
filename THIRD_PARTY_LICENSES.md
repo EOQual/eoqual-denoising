@@ -72,7 +72,7 @@ BSD / PSF-like (matplotlib) / MIT.
 
 Les valeurs par défaut des paramètres (`sigma_color = 2.5 σ` du bilatéral,
 `weight = 0.75 σ` de TV Chambolle, `weight = 1/σ` de TV Bregman) ont été
-calibrées pour ce projet (voir `REFERENCE_TECHNIQUE.md` §2) ; celle de
+calibrées pour ce projet (voir [référence technique](docs/technique/reference.md) §2) ; celle de
 NL-Means (`h = 0.6 σ`) suit la documentation de scikit-image.
 
 ### 2.2 Extras pip optionnels

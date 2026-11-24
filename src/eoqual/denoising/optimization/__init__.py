@@ -7,7 +7,7 @@ Optimisation bayésienne des paramètres des méthodes de débruitage
 >>> res.best_params, res.best_score, res.gain
 >>> clean = denoise(other_image, "nl_means", **res.best_kwargs)
 
-Voir OPTIMISATION.md pour la méthode, le dimensionnement du
+Voir docs/technique/optimisation.md pour la méthode, le dimensionnement du
 budget et les précautions (sur-apprentissage sur l'image de réglage).
 """
 from .optimizer import METRICS, PENALTY, OptimizationResult, default_n_jobs, optimize_parameters

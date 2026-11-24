@@ -222,7 +222,7 @@ def test_initial_guess_reproduces_method_defaults(pair):
 
     clean, noisy = pair
     # Seul écart voulu : nl_bayes part de N₂ = 30 (article en couleur ; 60 en gris à k₂ = 5),
-    # meilleur sur images texturées dans les deux cas (NL_BAYES.md §12.1).
+    # meilleur sur images texturées dans les deux cas (docs/technique/nl-bayes.md §12.1).
     departures = {"nl_bayes": {"N2": 30}}
     for method in ("bilateral", "nl_means", "tv_chambolle", "tv_bregman", "wavelet", "nl_bayes"):
         space = SEARCH_SPACES[method]

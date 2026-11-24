@@ -2,7 +2,7 @@
 
 Comparaison chiffrée des méthodes du catalogue, avec leurs réglages par
 défaut puis avec des réglages optimisés. Pour le principe de chaque
-méthode, voir `REFERENCE_TECHNIQUE.md` ; pour les licences,
+méthode, voir [référence technique](reference.md) ; pour les licences,
 `THIRD_PARTY_LICENSES.md`.
 
 ## En bref
@@ -35,7 +35,7 @@ méthode, voir `REFERENCE_TECHNIQUE.md` ; pour les licences,
 | Réglage / évaluation | **moitié gauche** (512×256) pour l'optimisation, **moitié droite** (512×256) pour toutes les mesures. Contenus différents, tirages de bruit différents (graines 1 et 2) |
 | Bruit | blanc gaussien additif, σ ∈ {0,05 ; 0,1 ; 0,2}, **σ connu** et transmis aux méthodes |
 | Scores | PSNR (dB) et SSIM, référence = image propre |
-| Optimisation | σ = 0,1 ; optimisation bayésienne, 25 évaluations dont 8 aléatoires, graine 0, espaces de recherche par défaut (`OPTIMISATION.md` §3) ; recherche exhaustive pour `swinir` (3 jeux de poids) |
+| Optimisation | σ = 0,1 ; optimisation bayésienne, 25 évaluations dont 8 aléatoires, graine 0, espaces de recherche par défaut ([optimisation](optimisation.md) §3) ; recherche exhaustive pour `swinir` (3 jeux de poids) |
 | Machine | CPU arm64 (macOS), PyTorch sur CPU, un seul processus |
 | Script | `examples/benchmark.py` (partie A et B), `examples/nl_bayes_benchmark.py` (§8) |
 
@@ -105,10 +105,10 @@ l'image de réglage elle-même est optimiste (colonne « Gain réglage » du
   moins bonne préservation des structures fines.
 - **SwinIR décroche à σ = 0,05** (−1,6 dB face aux autres réseaux) : il
   n'a de poids que pour 3 niveaux de bruit, et ce σ tombe entre deux
-  (`REFERENCE_TECHNIQUE.md` §3.2). Il est aussi 10 fois plus lent.
+  ([référence technique](reference.md) §3.2). Il est aussi 10 fois plus lent.
 - **Restormer en tête mais aveugle** : excellent dans son domaine
   d'entraînement (σ ≤ 50/255), il échoue au-delà, notamment à faible flux
-  (`REFERENCE_TECHNIQUE.md` §3.3). DRUNet, à 0,05 dB près, n'a pas cette
+  ([référence technique](reference.md) §3.3). DRUNet, à 0,05 dB près, n'a pas cette
   limite.
 - **NL-Bayes natif** (moteur vectorisé) : en tête des méthodes
   classiques en SSIM à tous les niveaux de bruit, et en PSNR à σ ≤ 0,1 ;
@@ -150,7 +150,7 @@ avec les réglages optimisés sur la moitié de réglage.
 lignes : 25 évaluations. La ligne `nl_bayes` a été mesurée avec l'espace
 de l'époque (10 dimensions, dont β₁, β₂, γ) ; l'espace par défaut n'en
 garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
-([NL_BAYES.md](NL_BAYES.md) §7.3).
+([NL-Bayes](nl-bayes.md) §7.3).
 
 ### 3.1 Lecture
 
@@ -174,7 +174,7 @@ garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
 - **Sur-apprentissage de `nl_means`** : la fenêtre de recherche réduite à
   ±3 px gagne 0,5 dB sur la moitié de réglage mais en perd 0,1 sur
   l'autre moitié. C'est l'illustration du piège décrit au §6 de
-  `OPTIMISATION.md` : **toujours valider un réglage sur une autre
+  [optimisation](optimisation.md) : **toujours valider un réglage sur une autre
   image que celle qui a servi à l'optimiser.**
 - **Coût** : de quelques secondes (socle) à 4 minutes (EPLL, TGV, BM3D)
   pour 25 évaluations sur 512×256 en CPU. Avec
@@ -182,7 +182,7 @@ garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
 
 ## 4. Image brute de capteur : bruit poisson-gaussien
 
-Résumé de `REFERENCE_TECHNIQUE.md` §5.5 (`examples/low_light_vst.py`,
+Résumé de [référence technique](reference.md) §5.5 (`examples/low_light_vst.py`,
 `astronaut` 256×256, K = 2 e⁻/DN, bruit de lecture 0,5 e⁻). PSNR (dB) :
 
 | Pic | Méthode | Directe (σ unique estimé) | GAT + inverse exacte | Gain |
@@ -204,7 +204,7 @@ directement est une erreur : la stabilisation de variance gagne 4 à
 | Qualité maximale, bruit modéré (σ ≤ 0,2) | `restormer` | Légèrement devant, mais aveugle : hors de son domaine il échoue |
 | Image brute de capteur, faible flux | `vst_denoise(..., "drunet")` | +8 à +10 dB sur l'application directe |
 | Sans PyTorch | `nl_bayes` | Meilleure méthode classique par défaut (PSNR et SSIM), MIT, aucune dépendance |
-| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +1,3 à +1,9 dB sur le canal par canal, 2,6 fois plus rapide ([NL_BAYES.md](NL_BAYES.md) §11.2) |
+| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +1,3 à +1,9 dB sur le canal par canal, 2,6 fois plus rapide ([NL-Bayes](nl-bayes.md) §11.2) |
 | Sans PyTorch, référence disponible | `nl_ridge` optimisé | 32,50 dB une fois réglé (§3) |
 | Sans PyTorch, temps compté | `nl_means` | 7 fois plus rapide que `nl_bayes`, 1,6 dB de moins |
 | Traitement massif, temps réel | `tv_chambolle` | ~10 fois plus rapide que `nl_means`, 1 dB de moins |
@@ -218,7 +218,7 @@ directement est une erreur : la stabilisation de variance gagne 4 à
   sur des photos 8 bits, sont les plus exposés. Refaire ce benchmark sur
   des scènes du capteur visé avant toute décision.
 - **Bruit blanc gaussien à σ connu**, sauf §4. Un σ estimé, un bruit
-  coloré (`REFERENCE_TECHNIQUE.md` §10.1) ou non stationnaire changent la
+  coloré ([référence technique](reference.md) §10.1) ou non stationnaire changent la
   donne.
 - **Temps en CPU** sur une seule machine, indicatifs ; sur GPU, les
   réseaux sont 10 à 100 fois plus rapides.
@@ -244,6 +244,6 @@ liste les autres avec la raison de leur absence.
 
 ## 8. NL-Bayes : moteurs et couleur
 
-Résultats et lecture : [NL_BAYES.md](NL_BAYES.md) §11.1 (moteurs) et
+Résultats et lecture : [NL-Bayes](nl-bayes.md) §11.1 (moteurs) et
 §11.2 (couleur). Reproduire : `python examples/nl_bayes_benchmark.py --out
 nl_bayes.md`.

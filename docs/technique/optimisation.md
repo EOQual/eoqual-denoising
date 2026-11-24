@@ -5,7 +5,7 @@ ou une chaîne de traitement, à partir d'une image de référence :
 principe de l'optimisation bayésienne, réglage de σ et du modèle de
 bruit, espaces de recherche, exécution, précautions. Les méthodes
 elles-mêmes, le rôle de σ et le modèle de bruit sont décrits dans
-`REFERENCE_TECHNIQUE.md` ; les gains mesurés dans `BENCHMARK.md` §3.
+[référence technique](reference.md) ; les gains mesurés dans [benchmark](benchmark.md) §3.
 
 **Fichiers** : `optimization/` (`optimizer.py`, `search_spaces.py`,
 `plotting.py`, `jsonc.py`) ; script `examples/optimize_parameters.py`.
@@ -15,7 +15,7 @@ Hoffman, Brochu & de Freitas (2011).
 
 ## 1. Principe
 
-Les réglages par défaut (`REFERENCE_TECHNIQUE.md` §2-3) sont calibrés
+Les réglages par défaut ([référence technique](reference.md) §2-3) sont calibrés
 sur une image naturelle. Sur une image d'un capteur donné, d'autres valeurs peuvent faire mieux.
 `optimize_parameters` cherche, pour une méthode, les paramètres qui
 maximisent un score (PSNR ou SSIM) entre l'image débruitée et une
@@ -47,7 +47,7 @@ faire moins bien que les défauts sur l'image de réglage.**
 
 Ce chapitre suppose connus le rôle de σ dans les méthodes, le modèle de
 bruit (a, b), la stabilisation de variance et le facteur C d'une image
-démosaïquée (`REFERENCE_TECHNIQUE.md` §4 à §6). Il dit ce qu'il faut
+démosaïquée ([référence technique](reference.md) §4 à §6). Il dit ce qu'il faut
 régler, et comment.
 
 ### 2.1 Principe
@@ -58,7 +58,7 @@ régler, et comment.
 |---|---|---|
 | (a, b), offset | propriétés du **capteur** | **fixes** : PTC ou recette en vol |
 | `sigma_scale` | ajustement du **niveau** de débruitage | **optimisé** ; c'est C après démosaïçage |
-| autres paramètres | réglages de la **méthode** | optimisés si besoin, gain souvent faible (§3, `BENCHMARK.md` §3) ; pour NL-Bayes, lesquels régler et pourquoi : [NL_BAYES.md](NL_BAYES.md) §12 |
+| autres paramètres | réglages de la **méthode** | optimisés si besoin, gain souvent faible (§3, [benchmark](benchmark.md) §3) ; pour NL-Bayes, lesquels régler et pourquoi : [NL-Bayes](nl-bayes.md) §12 |
 
 `sigma_scale` multiplie σ dans le domaine où travaille NL-Bayes : le σ de
 l'image sans stabilisation, 1 avec stabilisation. Dans ce second cas,
@@ -81,11 +81,11 @@ estimé, une stabilisation imparfaite, ou le gain de bruit du démosaïçage.
 utilise σ multiplié par un de ses propres paramètres, multiplier σ par
 `sigma_scale` revient à changer ce paramètre : les deux ne doivent pas
 être optimisés ensemble sans précaution. C'est le cas de NL-Bayes (β·σ²,
-γσ) : analyse et recommandation dans [NL_BAYES.md](NL_BAYES.md) §7.3 et
+γσ) : analyse et recommandation dans [NL-Bayes](nl-bayes.md) §7.3 et
 §12.
 
 **Budget.** 15 à 25 évaluations pour `sigma_scale` seul, autant pour
-les 3 dimensions de NL-Bayes ([NL_BAYES.md](NL_BAYES.md) §12 ; contraintes et redondances : §12.4). `optimize_parameters` avertit quand des réglages redondants sont libres ensemble (NL-Bayes : `sigma_scale`, β₁, β₂, γ). Toujours valider le réglage sur une autre
+les 3 dimensions de NL-Bayes ([NL-Bayes](nl-bayes.md) §12 ; contraintes et redondances : §12.4). `optimize_parameters` avertit quand des réglages redondants sont libres ensemble (NL-Bayes : `sigma_scale`, β₁, β₂, γ). Toujours valider le réglage sur une autre
 image que celle qui a servi à l'optimiser (§6).
 
 ### 2.4 Image démosaïquée : optimiser C, pas (a, b)
@@ -102,7 +102,7 @@ Pourquoi ne pas augmenter (a, b) à la place ? Stabiliser avec C²·a et
 C²·b revient à diviser l'image transformée par environ C, puis à
 débruiter avec σ = 1 : pour le débruitage, c'est presque la même chose
 que σ = C. Mais **l'inverse exacte non biaisée**
-(`REFERENCE_TECHNIQUE.md` §5.3) repose sur la statistique de Poisson
+([référence technique](reference.md) §5.3) repose sur la statistique de Poisson
 réelle du capteur, fixée par son vrai gain. Avec
 un gain artificiellement divisé par C², elle devient biaisée, surtout
 dans les zones sombres. Avec σ = C, la transformée et son inverse restent
@@ -139,7 +139,7 @@ En ligne de commande : `examples/optimize_parameters.py --method nl_bayes
 - **Optimiser (a, b) eux-mêmes** : à réserver à une mesure douteuse, en
   léger ajustement autour d'elle (l'outil ne le propose pas encore,
   §8) ; ce n'est jamais le bon levier pour le démosaïçage (§2.4).
-- **τ₀ proportionnel à σ²** (NL-Bayes) : testée et écartée ([NL_BAYES.md](NL_BAYES.md) §11.3).
+- **τ₀ proportionnel à σ²** (NL-Bayes) : testée et écartée ([NL-Bayes](nl-bayes.md) §11.3).
 
 ## 3. Espaces de recherche et contraintes
 
@@ -158,7 +158,7 @@ Chaque méthode réglable a un espace par défaut (`SEARCH_SPACES`) :
 | `wavelet_dict` | `threshold` [0,3 ; 4]·σ, `level` 1-5 |
 | `bm3d` | `sigma_scale` [0,5 ; 2], profil (`np`, `refilter`, `vn`, `high`) |
 | `nl_ridge`, `nl_ridge_inria` | `sigma_scale`, `p1`, `p2`, `k1`, `k2`, contraintes (linéaire / affine) |
-| `nl_bayes` | `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90] ; β₁, γ, τ₀, α, `use_area1`, `use_area2` fixés ([NL_BAYES.md](NL_BAYES.md) §12) |
+| `nl_bayes` | `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90] ; β₁, γ, τ₀, α, `use_area1`, `use_area2` fixés ([NL-Bayes](nl-bayes.md) §12) |
 | `nl_bayes_ipol` | `sigma_scale`, `use_area1`, `use_area2` |
 | `restormer` | aucune (réseau aveugle) |
 
@@ -216,7 +216,7 @@ plus petit que le budget (ex. `swinir`, 3 points) est évalué
   score, statut, durée), avec verrou de fichier sous POSIX.
 - **Bruit poisson-gaussien** : `vst={"gain", "read_noise_dn",
   "offset_dn"}` optimise la chaîne complète GAT → méthode → inverse
-  exacte (`REFERENCE_TECHNIQUE.md` §5), avec σ = 1 dans le domaine transformé.
+  exacte ([référence technique](reference.md) §5), avec σ = 1 dans le domaine transformé.
 
 ## 5. Usage
 
@@ -248,7 +248,7 @@ Pour σ et le modèle de bruit (quoi fixer, quoi optimiser, départ de
   au-delà de 5 (`nl_ridge`). `n_initial_points` ≈ 20 à 40 % de `n_calls`.
 - **Sur-apprentissage** : le gain mesuré sur l'image de réglage est
   optimiste. Il faut le **valider sur une autre image** du même capteur
-  (le benchmark sépare réglage et évaluation, voir `BENCHMARK.md`).
+  (le benchmark sépare réglage et évaluation, voir [benchmark](benchmark.md)).
 - **Référence** : la référence doit être bien plus propre que l'image à
   débruiter. Une référence bruitée biaise le réglage vers le sur-lissage.
 - **Score** : le PSNR favorise le lissage des zones homogènes, le SSIM
@@ -283,7 +283,7 @@ de gris, puis couleur avec `--kappa-y`) avec un budget réduit.
 | Script | Usage |
 |---|---|
 | `examples/optimize_parameters.py` | optimiser une méthode : journal CSV, meilleurs paramètres (JSON), image débruitée, figures |
-| `examples/benchmark.py` | réglages par défaut puis optimisés, réglage et évaluation séparés (`BENCHMARK.md` §2-3) |
+| `examples/benchmark.py` | réglages par défaut puis optimisés, réglage et évaluation séparés ([benchmark](benchmark.md) §2-3) |
 
 ## 8. Évolutions envisagées
 
@@ -298,16 +298,22 @@ de gris, puis couleur avec `--kappa-y`) avec un budget réduit.
   de référence et mesurer sur l'autre, dans `optimize_parameters`
   lui-même.
 
-## Annexe A — Historique des choix et corrections
+## Annexe A — Choix de conception
 
-Choix et corrections propres à l'optimisation ; l'historique du reste du
-module est dans `REFERENCE_TECHNIQUE.md`, annexe A.
-
-| Date | Objet | Décision ou correction |
-|---|---|---|
-| 2026-10-28 | Optimisation | Moteur d'optimisation bayésienne repris d'un outil antérieur de l'auteur, sans ses débruiteurs. Conflit corrigé : le paramètre `method` de `wavelet_denoise` empêchait l'appel par `denoise` ; l'optimiseur appelle la fonction de la méthode directement. Point de départ de SwinIR retiré : fixé aux poids « 25 » alors que le choix automatique donne « 15 », il affichait un faux gain de 2,09 dB. |
-| 2026-10-29 | Espaces de recherche | Passage de dictionnaires Python à un fichier JSONC commenté par méthode ; espace de NL-Bayes étendu à 10 dimensions. |
-| 2026-10-29 | Figures d'optimisation | `plot_evaluations` de scikit-optimize échouait pour un espace à une dimension : tracé manuel dans ce cas. |
-| 2026-11-02 | Contraintes déclaratives (0.1.1) | L'espace de NL-Ridge autorisait k₁ ≥ p₁² (p₁ = 5, k₁ jusqu'à 40) : YᵀY singulière à l'étape 1, PSNR de 1,6 dB, sans erreur signalée. Correction : clé `"constraints"` dans les fichiers d'espaces, analysée sans évaluation de code et appliquée automatiquement par `optimize_parameters` (mécanisme équivalent au `build_space_constraint` de l'outil d'origine, rendu déclaratif) ; contrainte `k1 < p1 * p1` sur `nl_ridge` et `nl_ridge_inria` ; `nl_ridge_denoise` et `nl_ridge_inria_denoise` refusent un tel réglage. |
-| 2026-11-16 | Image couleur, départ de C | `optimize_parameters` accepte les images couleur pour `nl_bayes` (PSNR sur les trois canaux, SSIM moyen) ; argument `sigma_scale0` (et `--kappa-y`) pour partir de C = √κ_Y + 0,2 ; borne haute de `sigma_scale` de NL-Bayes portée à 2,5. Correction d'une recommandation antérieure : avec la stabilisation, `sigma_scale` n'est pas superflu, c'est le facteur C. |
-| 2026-11-16 | Document séparé | L'optimisation, jusqu'ici chapitre de la référence technique, devient ce document ; le réglage de σ et du modèle de bruit (ex-§4.6 et §6.5 de la référence) y est regroupé au §2. |
+- **SwinIR : pas de point de départ imposé.** Partir des poids « 25 »,
+  quand le choix automatique donne « 15 », affiche un faux gain de
+  2,09 dB.
+- **Contraintes déclaratives.** Un espace de recherche peut autoriser des
+  réglages invalides sans erreur visible : pour NL-Ridge, k₁ ≥ p₁²
+  (p₁ = 5, k₁ jusqu'à 40) rend YᵀY singulière à l'étape 1 (PSNR de
+  1,6 dB). Les fichiers d'espaces portent donc une clé `"constraints"`,
+  analysée sans évaluation de code et appliquée automatiquement par
+  `optimize_parameters` (contrainte `k1 < p1 * p1` sur `nl_ridge` et
+  `nl_ridge_inria`) ; `nl_ridge_denoise` et `nl_ridge_inria_denoise`
+  refusent eux aussi un tel réglage.
+- **Espaces de recherche en JSONC commenté**, un fichier par méthode,
+  plutôt que des dictionnaires Python.
+- **Figures** : `plot_evaluations` de scikit-optimize échoue pour un
+  espace à une dimension ; le tracé est alors fait à la main.
+- **Avec la stabilisation, `sigma_scale` n'est pas superflu** : c'est le
+  facteur C d'une image démosaïquée (§2).

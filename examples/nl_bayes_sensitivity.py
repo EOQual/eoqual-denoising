@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Étude de sensibilité des paramètres de NL-Bayes sur des images de
-télédétection texturées (NL_BAYES.md §9).
+télédétection texturées (docs/technique/nl-bayes.md §9).
 
 Deux volets :
 
@@ -39,7 +39,7 @@ Usage ::
 
 Sorties : ``results_gray.csv``, ``results_rgb.csv``, ``results_sigma_beta.csv``,
 ``results_groups.csv``, ``rapport.md``
-(tableaux) dans ``--out`` ; figures ``docs/figures/nl_bayes/sens_*.png``.
+(tableaux) dans ``--out`` ; figures ``docs/technique/figures/nl_bayes/sens_*.png``.
 Durée indicative (8 cœurs) : 4 min (``gray``), 8 min (``rgb``), 2 min (``sigma_beta``),
 1 min (``groups``).
 
@@ -59,7 +59,7 @@ from pathlib import Path
 
 import numpy as np
 
-FIG = Path(__file__).resolve().parents[1] / "docs" / "figures" / "nl_bayes"
+FIG = Path(__file__).resolve().parents[1] / "docs" / "technique" / "figures" / "nl_bayes"
 WINDOW = (3072, 2902, 4096)       # ligne, colonne, côté (pixels de 5 cm) dans capitole_10240.tif
 REDUCE = 4                        # 5 cm → 20 cm
 TILE = 128

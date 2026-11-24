@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Étude de sensibilité du seuil τ₀ de NL-Bayes (NL_BAYES.md §11.3).
+Étude de sensibilité du seuil τ₀ de NL-Bayes (docs/technique/nl-bayes.md §11.3).
 
 Pour chaque image et chaque niveau de bruit, débruite avec une grille de
 τ₀ (niveaux² sur l'échelle 0-255) et compare au réglage de l'article

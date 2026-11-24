@@ -44,7 +44,7 @@ def tv_chambolle_denoise(
     weight : float, optional
         Poids de la régularisation TV, dans les unités de l'image (plus
         grand = plus lisse). Par défaut ``0.75 * sigma`` (calibré
-        empiriquement, voir REFERENCE_TECHNIQUE.md §2.3).
+        empiriquement, voir docs/technique/reference.md §2.3).
     eps : float
         Critère d'arrêt relatif. Par défaut ``2e-4``.
     max_num_iter : int
@@ -85,7 +85,7 @@ def tv_bregman_denoise(
         Poids de l'**attache aux données** (plus grand = moins lisse —
         sens inverse de ``tv_chambolle_denoise``), en inverse des unités
         de l'image. Par défaut ``1 / sigma`` (calibré empiriquement, voir
-        REFERENCE_TECHNIQUE.md §2.4).
+        docs/technique/reference.md §2.4).
     max_num_iter : int
         Nombre maximal d'itérations. Par défaut ``100``.
     eps : float

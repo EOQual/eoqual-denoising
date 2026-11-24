@@ -39,7 +39,7 @@ def bilateral_denoise(
     sigma_color : float, optional
         Écart-type du noyau radiométrique (unités de l'image). Par défaut
         ``2.5 * sigma`` (calibré empiriquement, voir
-        REFERENCE_TECHNIQUE.md §2.1).
+        docs/technique/reference.md §2.1).
     sigma_space : float
         Écart-type du noyau spatial, en pixels. Par défaut ``1.5``.
     diameter : int

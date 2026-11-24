@@ -16,7 +16,7 @@ Ouvrez une issue avec :
 
 Ouvrez une issue décrivant la méthode (nom, référence bibliographique,
 ce qu'elle apporte par rapport aux méthodes déjà cataloguées — voir
-`REFERENCE_TECHNIQUE.md` pour l'existant). Pas besoin de savoir
+[référence technique](docs/technique/reference.md) pour l'existant). Pas besoin de savoir
 l'implémenter pour la proposer.
 
 ## Implémenter une méthode
@@ -31,7 +31,7 @@ vérifie. Elle est ensuite déclarée dans
 `config.py::METHODS_CONFIGS` (extra, composant externe, licence,
 restriction, référence), dans le dispatch de `runner.py::_DISPATCH`,
 exposée dans `__init__.py`, et sa référence complète est ajoutée à
-`BIBLIOGRAPHY.md`. Si elle a des paramètres réglables, lui donner un
+[bibliographie](docs/technique/bibliographie.md). Si elle a des paramètres réglables, lui donner un
 espace de recherche dans `optimization/search_spaces.py`
 (`SEARCH_SPACES`, bornes en multiples de σ, `initial_guess` = valeurs
 par défaut) : le test `test_every_tunable_method_has_a_search_space`
@@ -65,7 +65,7 @@ l'intégration retirée si nécessaire.
 ## Tests
 
 Toute nouvelle méthode doit être testée (voir
-`REFERENCE_TECHNIQUE.md` §9.1) :
+[référence technique](docs/technique/reference.md) §9.1) :
 
 - une méthode du socle est couverte automatiquement par
   `tests/test_socle.py` (gain de PSNR, σ estimé, invariance d'échelle) ;
@@ -77,12 +77,20 @@ Toute nouvelle méthode doit être testée (voir
 - utiliser les fixtures de `tests/conftest.py` et `check_gain` de
   `tests/_helpers.py` ; tolérances statistiques tirées de l'incertitude.
 
-Mettre à jour `BENCHMARK.md` avec `examples/benchmark.py`.
+Mettre à jour [benchmark](docs/technique/benchmark.md) avec `examples/benchmark.py`.
 
 ## Documentation
 
 Toute méthode nouvelle ou modifiée doit rester reflétée dans `README.md`
-(catalogue), `REFERENCE_TECHNIQUE.md` (principe, implémentation,
-limites), `OPTIMISATION.md` (espace de recherche, si la méthode est
-réglable), `THIRD_PARTY_LICENSES.md` (licence) et `BIBLIOGRAPHY.md`
+(catalogue), [référence technique](docs/technique/reference.md) (principe, implémentation,
+limites), [optimisation](docs/technique/optimisation.md) (espace de recherche, si la méthode est
+réglable), `THIRD_PARTY_LICENSES.md` (licence) et [bibliographie](docs/technique/bibliographie.md)
 (référence). Les docstrings seules ne suffisent pas.
+
+## Documentation technique
+
+Les documents de `docs/technique/` décrivent l'état présent, sans dates ni
+numéros de version : ce qui change d'une version à l'autre va dans
+`CHANGELOG.md`, et une variante de méthode écartée se décrit au présent,
+dans la section « Variantes écartées » (ou « Choix de conception ») du
+document. Construction locale du site : `make html` dans `docs/`.

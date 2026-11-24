@@ -1,7 +1,7 @@
 # Bibliographie — eoqual-denoising
 
 Référence bibliographique de chaque méthode du catalogue, en un seul
-endroit. `REFERENCE_TECHNIQUE.md`, `config.py` et les docstrings n'en
+endroit. [référence technique](reference.md), `config.py` et les docstrings n'en
 gardent qu'un rappel court (auteur, année) ; ce document est la source de
 vérité pour les citations complètes.
 

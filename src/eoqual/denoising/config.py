@@ -14,7 +14,7 @@ Chaque entrée décrit :
 - ``restriction`` : restriction d'usage à connaître avant d'utiliser la
   méthode (``None`` si aucune au-delà de la conservation des notices) ;
 - ``reference`` : référence bibliographique courte (complète dans
-  ``BIBLIOGRAPHY.md``).
+  ``docs/technique/bibliographie.md``).
 
 Voir ``README.md`` (catalogue) et ``THIRD_PARTY_LICENSES.md`` (audit des
 licences) pour le détail.

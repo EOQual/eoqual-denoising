@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figures explicatives de NL_BAYES.md (principe de la méthode).
+Figures explicatives de docs/technique/nl-bayes.md (principe de la méthode).
 
-    python examples/nl_bayes_figures.py            # écrit docs/figures/nl_bayes/*.png
+    python examples/nl_bayes_figures.py            # écrit docs/technique/figures/nl_bayes/*.png
 
 Image : « astronaut » (NASA, domaine public), niveaux de gris, bruit blanc
 σ = 20 sur l'échelle 0-255. Le regroupement et la covariance sont recalculés
-ici pour un seul patch, avec les formules de NL_BAYES.md §2 à §4, afin de les
+ici pour un seul patch, avec les formules de docs/technique/nl-bayes.md §2 à §4, afin de les
 montrer ; le débruitage complet utilise ``eoqual.denoising``.
 
 Dépendances de l'exemple (non requises par le paquet) : matplotlib.
@@ -25,7 +25,7 @@ from matplotlib.patches import FancyArrowPatch, Rectangle  # noqa: E402
 
 import eoqual.denoising as d  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[1] / "docs" / "figures" / "nl_bayes"
+OUT = Path(__file__).resolve().parents[1] / "docs" / "technique" / "figures" / "nl_bayes"
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#d9d8d4"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 SIGMA = 20.0

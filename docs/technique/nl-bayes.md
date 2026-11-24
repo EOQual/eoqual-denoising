@@ -9,7 +9,7 @@ par optimisation. Les autres documents y renvoient.
 |---|---|---|
 | `nl_bayes` | implémentation numpy écrite depuis l'article, fournie par la bibliothèque **nlbayes-ext** (https://github.com/oam31/nlbayes-ext, `denoise_gray`, `denoise_rgb`), appelée par `backends/nl_bayes/native.py` | MIT |
 | `nl_bayes_cfa` | extension aux mosaïques de Bayer, nlbayes-ext (`denoise_cfa`), appelée par `backends/nl_bayes/cfa.py` (§13) | MIT |
-| `nl_bayes_ipol` | exécutable C++ de l'article IPOL, appelé en composant externe (`backends/nl_bayes/ipol_external.py`, installation : `REFERENCE_TECHNIQUE.md` §3.10) | GPL-3.0+ |
+| `nl_bayes_ipol` | exécutable C++ de l'article IPOL, appelé en composant externe (`backends/nl_bayes/ipol_external.py`, installation : [référence technique](reference.md) §3.10) | GPL-3.0+ |
 
 **Références.** A. Buades, M. Lebrun, J.-M. Morel, « A Nonlocal Bayesian
 Image Denoising Algorithm », *SIAM J. Imaging Sciences* 6(3), 2013 ;
@@ -37,7 +37,7 @@ covariance), et estime chaque patch propre par un **filtre de Wiener**
 calculé sur ce modèle. Chaque pixel appartient à plusieurs patchs : ses
 estimations sont moyennées.
 
-![Les deux étapes de NL-Bayes](docs/figures/nl_bayes/pipeline.png)
+![Les deux étapes de NL-Bayes](figures/nl_bayes/pipeline.png)
 
 - **Étape 1** : les groupes sont formés et le modèle est estimé sur
   l'image bruitée. Le résultat (l'**estimée de base**) est déjà débruité
@@ -67,7 +67,7 @@ plate.
 N patchs les plus proches, référence comprise. Le groupe est l'ensemble
 de ces N vecteurs.
 
-![Patch de référence, fenêtre de recherche et groupe](docs/figures/nl_bayes/grouping.png)
+![Patch de référence, fenêtre de recherche et groupe](figures/nl_bayes/grouping.png)
 
 **Patchs de référence.** Tous les patchs ne sont pas traités comme
 références. Le moteur « boucle » suit l'astuce de l'article : un patch déjà
@@ -146,7 +146,7 @@ inconnues. Deux conséquences :
   (il est gardé, §4) ou bien plus faible (son gain devient négatif à
   l'étape 1, §4.3).
 
-![Covariance d'un groupe, valeurs propres et motifs propres](docs/figures/nl_bayes/covariance.png)
+![Covariance d'un groupe, valeurs propres et motifs propres](figures/nl_bayes/covariance.png)
 
 Sur cet exemple (σ = 20, k = 5, N = 60), les cinq premiers motifs portent
 la structure (contour du scaphandre) ; les valeurs propres de la
@@ -238,7 +238,7 @@ Les deux étapes ont chacune leur β parce que ce sont deux filtres
 différents (soustraction du bruit d'une covariance bruitée, puis
 régularisation d'une covariance presque propre).
 
-![Gains des étapes 1 et 2 selon β](docs/figures/nl_bayes/gains.png)
+![Gains des étapes 1 et 2 selon β](figures/nl_bayes/gains.png)
 
 ### 4.6 Agrégation
 
@@ -360,7 +360,7 @@ Appliquées par `resolve_parameters` quand un paramètre est changé seul :
 
 Les généralités sur σ (ce qu'il représente, son estimation, le modèle de
 bruit du capteur, la stabilisation de variance, le facteur C après
-démosaïçage) sont communes à toutes les méthodes : `REFERENCE_TECHNIQUE.md`
+démosaïçage) sont communes à toutes les méthodes : [référence technique](reference.md)
 §4 à §6. Ce chapitre ne garde que ce qui est propre à NL-Bayes.
 
 ### 7.1 Où σ intervient
@@ -415,7 +415,7 @@ au §11.4 et au §11.5 : peu.
 Sans critère homogène (γ absent ou inactif), il ne reste que deux
 grandeurs (β₁σ², β₂σ²) : s et un seul β suffisent.
 
-![σ, sigma_scale, β et γ ; rôle de τ₀](docs/figures/nl_bayes/parametrisation.png)
+![σ, sigma_scale, β et γ ; rôle de τ₀](figures/nl_bayes/parametrisation.png)
 
 *À gauche : une seule chaîne σ → `sigma_scale` → β₁σ², β₂σ², γσ. À
 droite : à l'étape 2, le groupe contient les patchs à distance
@@ -439,7 +439,7 @@ critère des zones homogènes est désactivé aux deux étapes).
   moyenne des trois canaux de l'estimée de base (formule 13), **canaux
   filtrés ensemble** : patchs de 3k² valeurs et covariance commune
   (tableau 1 de l'article : deux groupes 3D en tout à l'étape 2, contre deux
-  par canal pour BM3D ; filtrés canal par canal jusqu'à la version 0.4.0) ;
+  par canal pour BM3D) ;
 - **`"rgb"`** : les deux étapes en RGB, groupes communs aux trois canaux,
   étape 2 à canaux filtrés ensemble ;
 - **`"channel"`** : chaque canal débruité indépendamment, comme une image
@@ -453,7 +453,7 @@ pour `"yuv"` et `"rgb"`, profil niveaux de gris pour `"channel"`.
 Le démosaïçage corrèle le bruit entre pixels voisins et entre canaux, et
 change sa variance en luminance d'un facteur κ_Y propre au démosaïqueur.
 La recette générale (stabiliser avec le modèle du capteur, débruiter avec
-σ = C = √κ_Y + 0,2, inverser) est décrite dans `REFERENCE_TECHNIQUE.md`
+σ = C = √κ_Y + 0,2, inverser) est décrite dans [référence technique](reference.md)
 §6 et eoqual-demosaicing (§11.3).
 
 Ce qui est propre à NL-Bayes : le modèle suppose un bruit **blanc**,
@@ -497,7 +497,7 @@ l'image sur 8 bits pour l'échange (PNG).
 
 ## 10. Jeux de données
 
-![Tuiles des études de sensibilité](docs/figures/nl_bayes/sens_tiles.png)
+![Tuiles des études de sensibilité](figures/nl_bayes/sens_tiles.png)
 
 | Jeu | Contenu | Bruit | Utilisé par |
 |---|---|---|---|
@@ -573,9 +573,8 @@ plusieurs cœurs.
 | `channel` | 35,76 | 32,23 | 28,61 | 0,906 | 4,45 s |
 | IPOL C++, canal par canal | 35,41 | 31,82 | 28,15 | 0,872 | 0,34 s |
 
-Mesures de la version 0.4.1 (étape 2 à canaux filtrés ensemble ; jusqu'à
-0.4.0, `yuv` donnait 36,24 / 33,07 / 29,85 et `rgb` 36,02 / 32,77 /
-29,31). Former les groupes sur la luminance Y₀ (moyenne des trois canaux,
+Mesures avec l'étape 2 à canaux filtrés ensemble (canal par canal, `yuv`
+donne 36,24 / 33,07 / 29,85 et `rgb` 36,02 / 32,77 / 29,31). Former les groupes sur la luminance Y₀ (moyenne des trois canaux,
 donc moins bruitée) donne des groupes plus fiables, que les canaux de
 chrominance partagent, et filtrer les trois canaux ensemble à l'étape 2
 exploite leurs corrélations : +1,3 à +1,9 dB sur le canal par canal, pour
@@ -606,7 +605,7 @@ plancher est utile.
 Jeu « orthophoto, gris » (§10) : un paramètre à la fois autour du point
 de départ, 2 tirages, `examples/nl_bayes_sensitivity.py --parts gray`.
 
-![Sensibilité, niveaux de gris](docs/figures/nl_bayes/sens_gray.png)
+![Sensibilité, niveaux de gris](figures/nl_bayes/sens_gray.png)
 
 Écart de PSNR (dB) au point de départ, moyenne des 6 tuiles
 d'orthophoto, pour les valeurs les plus parlantes :
@@ -664,10 +663,10 @@ niveaux de gris.
 
 ### 11.5 Sensibilité, RGB démosaïqué, zones sombres
 
-> **Mise à jour 0.4.1 (§11.8).** Les tableaux détaillés des §11.5 à §11.7
-> ont été mesurés avec la version 0.4.0 (étape 2 couleur canal par canal)
-> et contre le démosaïçage sans bruit. Remesurés en 0.4.1, et aussi contre
-> la vraie image, ils confirment le rôle des paramètres (critère homogène
+> **À lire avec le §11.8.** Les tableaux détaillés des §11.5 à §11.7
+> ont été mesurés avec une étape 2 couleur canal par canal et contre le
+> démosaïçage sans bruit. Remesurés avec les canaux filtrés ensemble, et
+> aussi contre la vraie image, ils confirment le rôle des paramètres (critère homogène
 > indispensable à faible flux, rôle de τ₀ et de N₂), mais pas la valeur de
 > σ et de β₂ conseillée au §11.6 : voir §11.8.
 
@@ -710,7 +709,7 @@ Trois constats :
    horizontaux en R, 0,20 en G, 0,36 en B) : le modèle σ²·I de NL-Bayes ne
    le reconnaît pas comme du bruit (§8.2).
 
-![Sensibilité, RGB démosaïqué](docs/figures/nl_bayes/sens_rgb.png)
+![Sensibilité, RGB démosaïqué](figures/nl_bayes/sens_rgb.png)
 
 **Rôle de chaque paramètre** (stabilisation de variance ; ΔPSNR de
 l'image entière ; variation de l'erreur des zones sombres, en %, négatif =
@@ -733,7 +732,7 @@ mieux) :
 
 **Croisements.**
 
-![N₂ × k₂, RGB démosaïqué](docs/figures/nl_bayes/sens_rgb_n2k2.png)
+![N₂ × k₂, RGB démosaïqué](figures/nl_bayes/sens_rgb_n2k2.png)
 
 - **N₂ × k₂** : pas d'interaction notable. Le meilleur reste un petit
   patch et un petit groupe (k₂ = 3 avec N₂ = 15-30, ou k₂ = 5 avec
@@ -805,9 +804,8 @@ Constats :
    intérêt est de laisser σ au niveau physique du bruit, ce qui garde γσ à
    sa place (constat 2).
 
-**Règle (0.4.0, contre le démosaïçage sans bruit)** : `sigma_scale` ≈
-√κ_Y (1,1 pour Hamilton-Adams), β₂ = 0,8 à 1,0. **Remplacée en 0.4.1**
-(§11.8) : contre la vraie image, la recette de l'article et
+**Règle mesurée contre le démosaïçage sans bruit** : `sigma_scale` ≈
+√κ_Y (1,1 pour Hamilton-Adams), β₂ = 0,8 à 1,0. **Remplacée** (§11.8) : contre la vraie image, la recette de l'article et
 d'eoqual-demosaicing (σ = C = √κ_Y + 0,2, β₂ = 1,2) est au meilleur à
 0,04 dB près.
 
@@ -847,10 +845,10 @@ en zones sombres et de +5,9 % en zones claires (§11.5). L'effet disparaît
 sombres : ce sont τ₀ et le critère homogène qui y règlent la taille des
 groupes.
 
-### 11.8 Mise à jour 0.4.1 : étape 2 couleur commune et choix de la référence
+### 11.8 Étape 2 couleur commune et choix de la référence
 
-La version 0.4.1 filtre les trois canaux ensemble à l'étape 2 (§8.1).
-`nl_bayes_sensitivity.py --parts rgb sigma_beta groups` a été relancé, avec
+L'étape 2 filtre les trois canaux ensemble (§8.1). Avec cette étape,
+`nl_bayes_sensitivity.py --parts rgb sigma_beta groups` est relancé avec
 la référence habituelle (démosaïçage Hamilton-Adams sans bruit, qui isole
 le débruitage) et avec la vraie image (`--reference truth`, qui inclut
 l'erreur de démosaïçage).
@@ -858,10 +856,10 @@ l'erreur de démosaïçage).
 **Réglage de l'article (σ = C, β₂ = 1,2), stabilisation, PSNR en dB**
 (300 / 1 500 / 7 500 e⁻) :
 
-| Version | Contre le démosaïçage sans bruit | Contre la vraie image |
+| Étape 2 couleur | Contre le démosaïçage sans bruit | Contre la vraie image |
 |---|---|---|
-| 0.4.0 (canal par canal) | 33,39 / 38,60 / 43,72 | 29,78 / 30,83 / 31,11 |
-| 0.4.1 (canaux ensemble) | 33,12 / 38,15 / 43,35 | 30,30 / 31,17 / 31,25 |
+| canal par canal | 33,39 / 38,60 / 43,72 | 29,78 / 30,83 / 31,11 |
+| canaux ensemble | 33,12 / 38,15 / 43,35 | 30,30 / 31,17 / 31,25 |
 
 Les deux références donnent des sens opposés : l'étape 2 commune corrige
 une partie des défauts de couleur d'Hamilton-Adams (erreur de couleur des
@@ -943,7 +941,7 @@ constante, §11.6).
 
 ### 12.2 L'espace par défaut
 
-`optimization/spaces/nl_bayes.jsonc` (2026-11-18) optimise `sigma_scale`,
+`optimization/spaces/nl_bayes.jsonc` optimise `sigma_scale`,
 β₂ et N₂ ; il part de l'article (`sigma_scale` = 1, β₂ = 1,2) avec
 N₂ = 30, qui est la valeur de l'article en couleur et la moitié de celle
 du gris (60 à k₂ = 5). β₁, γ, τ₀, α, `use_area1` et `use_area2` sont
@@ -955,12 +953,12 @@ effet faible, et laissait de côté β₂ et N₂.
 
 - **Valider sur une autre image** que celle du réglage : sur le benchmark,
   un réglage peut gagner 0,15 dB sur l'image de réglage et 0,02 dB
-  seulement sur une autre (`BENCHMARK.md` §3).
+  seulement sur une autre ([benchmark](benchmark.md) §3).
 - **Images de télédétection** : régler sur des images du capteur, au bon
   niveau de flux ; le classement des paramètres change entre faible et
   fort flux (§11.5).
 - Le réglage de σ et du modèle de bruit (stabilisation, facteur C) suit
-  `OPTIMISATION.md` §2.
+  [optimisation](optimisation.md) §2.
 
 ### 12.4 Contraintes et redondances de l'espace de recherche
 
@@ -1116,8 +1114,8 @@ tuile de 128 × 128 et par fil. Protocole et détail ci-dessous.
 `nl_bayes_cfa` gagne sur tous les indicateurs, sauf la luminance des
 ombres à 300 e⁻ sur les orthophotos (+5 à +7 %), que le critère des zones
 homogènes ramène au niveau de la chaîne YUV ; il coûte 7 à 12 fois plus de
-temps. Mesures de la version 0.4.1 : la correction de l'étape 2 couleur
-améliore la chaîne YUV de 0 à 0,5 dB (et le pilote de `nl_bayes_cfa`, sans
+temps. Filtrer les canaux ensemble à l'étape 2, plutôt que canal par
+canal, améliore la chaîne YUV de 0 à 0,5 dB (et le pilote de `nl_bayes_cfa`, sans
 effet notable sur son résultat à 8 passes) ; le gain de `nl_bayes_cfa`
 baisse d'autant.
 
@@ -1157,8 +1155,7 @@ bilinéaire, PSNR en dB, 300 / 1 500 / 7 500 e⁻) :
   par canal, en dimension 9.
 - **Valeurs par défaut : N = 60, 8 passes.** Sur les orthophotos, c'est
   le meilleur réglage de la grille ou il en est à 0,1 dB près ; sur la
-  scène synthétique, il gagne 3,8 à 4,8 dB sur l'ancien défaut (N = 30,
-  4 passes).
+  scène synthétique, il gagne 3,8 à 4,8 dB sur N = 30 et 4 passes.
   Plus de passes ou de patchs favorise encore les grandes zones uniformes
   (12 passes : +1 à +2,7 dB sur la synthétique), mais dégrade les
   orthophotos (−0,2 à −0,45 dB).
@@ -1273,7 +1270,7 @@ moyenne du groupe. Le critère y est donc un réglage fin, comme
   covariance du bruit Σ_n dans les deux filtres (C̃ − β₁Σ_n, puis
   C_b + β₂Σ_n), Σ_n mesurée une fois par démosaïqueur (bruit pur, comme
   κ_Y). Elle garde la chaîne actuelle (démosaïçage puis débruitage) ;
-  `nl_bayes_cfa` (§13) traite le même défaut à la source (§8.2, §11.5) ; voir aussi `REFERENCE_TECHNIQUE.md`
+  `nl_bayes_cfa` (§13) traite le même défaut à la source (§8.2, §11.5) ; voir aussi [référence technique](reference.md)
   §10.1.
 - **Bruit dépendant du signal sans stabilisation** : un σ par groupe,
   calculé à partir du modèle du capteur et de la moyenne du groupe, au
