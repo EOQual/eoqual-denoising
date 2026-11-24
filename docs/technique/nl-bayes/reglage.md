@@ -43,12 +43,12 @@ effet faible, et laissait de côté β₂ et N₂.
 
 - **Valider sur une autre image** que celle du réglage : sur le benchmark,
   un réglage peut gagner 0,15 dB sur l'image de réglage et 0,02 dB
-  seulement sur une autre ([benchmark](../benchmark.md) [§3](methode.md#3-la-covariance-dun-groupe)).
+  seulement sur une autre ([benchmark](../benchmark.md) §3).
 - **Images de télédétection** : régler sur des images du capteur, au bon
   niveau de flux ; le classement des paramètres change entre faible et
   fort flux ([§11.5](etudes.md#115-sensibilité-rgb-démosaïqué-zones-sombres)).
 - Le réglage de σ et du modèle de bruit (stabilisation, facteur C) suit
-  [optimisation](../optimisation.md) [§2](methode.md#2-patchs-groupes-et-distance).
+  [optimisation](../optimisation.md) §2.
 
 ### 12.4 Contraintes et redondances de l'espace de recherche
 

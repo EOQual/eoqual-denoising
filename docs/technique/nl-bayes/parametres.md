@@ -130,7 +130,7 @@ critère des zones homogènes est désactivé aux deux étapes).
 
 `color_mode`, pour une image (H, W, 3) de même σ sur les trois canaux :
 
-- **`"yuv"`** (défaut, choix de l'article, [§3.3](methode.md#33-ce-que-le-bruit-ajoute)-3.4 et tableau 8) :
+- **`"yuv"`** (défaut, choix de l'article, §3.3-3.4 et tableau 8) :
   étape 1 dans l'espace Y₀U₀V₀ rendu orthonormé (σ conservé sur chaque
   canal transformé), groupes formés sur Y₀ seul et appliqués à U₀ et V₀,
   filtrage canal par canal ; étape 2 en RGB, groupes formés sur la distance
