@@ -34,8 +34,8 @@ lui-même, comme celui de tous les paramètres, est dans [optimisation](optimisa
 | `tv_chambolle` | variationnel | variation totale (ROF), solveur dual de Chambolle | §2.3 |
 | `tv_bregman` | variationnel | variation totale (ROF), solveur split Bregman | §2.4 |
 | `wavelet` | transformée | seuillage des coefficients d'ondelettes | §2.5 |
-| `nl_bayes` | non local, 2 étapes | estimateur bayésien gaussien sur groupes de patchs ; couleur | §2.6, [NL-Bayes](nl-bayes.md) |
-| `nl_bayes_cfa` | non local, itératif | mosaïque de Bayer → RGB : estimateur gaussien (PLE) sur les groupes NL-Bayes, débruite et démosaïque | [NL-Bayes](nl-bayes.md) §13 |
+| `nl_bayes` | non local, 2 étapes | estimateur bayésien gaussien sur groupes de patchs ; couleur | §2.6, [NL-Bayes](nl-bayes/index.md) |
+| `nl_bayes_cfa` | non local, itératif | mosaïque de Bayer → RGB : estimateur gaussien (PLE) sur les groupes NL-Bayes, débruite et démosaïque | [NL-Bayes](nl-bayes/cfa.md) §13 |
 | `nl_ridge` | non local, 2 étapes | combinaisons linéaires de patchs, poids en forme fermée (SURE puis ridge) | §2.7 |
 | `drunet` | réseau | U-Net résiduel conditionné par σ | §3.1 |
 | `swinir` | réseau | transformeur à fenêtres glissantes, poids par niveau de bruit | §3.2 |
@@ -187,7 +187,7 @@ de BM3D (32,38) et de NL-Ridge.
 
 **Tout le détail** — mathématiques (covariance, filtre de Wiener), rôle de
 chaque paramètre, place de σ, couleur et images démosaïquées, moteurs,
-études de sensibilité et réglage : **[NL-Bayes](nl-bayes.md)**.
+études de sensibilité et réglage : **[NL-Bayes](nl-bayes/index.md)**.
 
 ### 2.7 `nl_ridge` — NL-Ridge, réimplémentation MIT
 
@@ -442,7 +442,7 @@ référence. Utile pour comparer ; `nl_bayes` est préférable en usage
 courant (MIT, sans composant externe, sans quantification, meilleur
 PSNR en niveaux de gris : 32,45 contre 32,02 dB).
 
-Méthode et paramètres : [NL-Bayes](nl-bayes.md).
+Méthode et paramètres : [NL-Bayes](nl-bayes/index.md).
 
 **Mise en place** : télécharger l'archive `nl-bayes_20130617.tar.gz` de
 https://www.ipol.im/pub/art/2013/16/, installer libpng et fftw3, compiler
@@ -481,7 +481,7 @@ qu'il représente, comment les méthodes s'en servent, d'où vient sa
 valeur, ce qu'il devient avec la stabilisation de variance et après un
 démosaïçage, et comment le régler par optimisation. Ce qui est propre à
 NL-Bayes (place exacte de σ dans ses formules, seuil τ₀, redondance avec
-β et γ) est dans [NL-Bayes](nl-bayes.md) §7.
+β et γ) est dans [NL-Bayes](nl-bayes/parametres.md) §7.
 
 ### 4.1 Ce que σ représente
 
@@ -512,8 +512,8 @@ Deux cas réels sortent de ce modèle et sont traités à part :
 | filtres et méthodes variationnelles (`bilateral`, `nl_means`, `tv_*`, `tgv`) | un poids ou un seuil proportionnel à σ (espaces de recherche en multiples de σ, [optimisation](optimisation.md) §3) |
 | ondelettes (`wavelet`, `wavelet_dict`) | seuil des coefficients proportionnel à σ |
 | `bm3d` | seuil proportionnel à σ (étape 1), σ² comme variance du bruit dans le filtre de Wiener (étape 2) |
-| `nl_bayes`, `nl_bayes_ipol` | σ² comme variance du bruit dans deux filtres de Wiener, γσ comme seuil des zones plates ([NL-Bayes](nl-bayes.md) §7) |
-| `nl_bayes_cfa` | βσ² dans U·C·Uᵀ + βσ²I, bruit de la mosaïque (1 après stabilisation) ([NL-Bayes](nl-bayes.md) §13) |
+| `nl_bayes`, `nl_bayes_ipol` | σ² comme variance du bruit dans deux filtres de Wiener, γσ comme seuil des zones plates ([NL-Bayes](nl-bayes/parametres.md) §7) |
+| `nl_bayes_cfa` | βσ² dans U·C·Uᵀ + βσ²I, bruit de la mosaïque (1 après stabilisation) ([NL-Bayes](nl-bayes/cfa.md) §13) |
 | `nl_ridge`, `nl_ridge_inria` | nσ² dans les deux régressions de patchs, Θ₁ et Θ₂ (§2.7) |
 | `drunet`, `gsdrunet` | carte de niveau de bruit en entrée du réseau |
 | `swinir` | choix d'un jeu de poids entraîné (15, 25 ou 50) |
@@ -540,7 +540,7 @@ détails ; trop faible, elle laisse du bruit.
    défaut le min/max de l'image). C'est un calcul en flottants, pas une
    quantification. Pour une série d'images, fixer `data_range` à la
    dynamique du capteur (ex. `(0, 4095)`) ; détail pour NL-Bayes :
-   [NL-Bayes](nl-bayes.md) §7.2.
+   [NL-Bayes](nl-bayes/parametres.md) §7.2.
 5. **Couleur** : un seul σ, supposé identique sur les trois canaux.
 
 ### 4.4 Bruit qui dépend de la luminance : modèle (a, b) et stabilisation
@@ -575,7 +575,7 @@ d'écart-type **1 partout**. La méthode reçoit alors `σ = 1` :
 - pour les méthodes qui travaillent sur l'échelle 0-255 (NL-Bayes,
   NL-Ridge), σ = 1 est converti avec **la dynamique de l'image
   transformée**, environ 2·√(signal crête en électrons) : σ ≈ 13 sur
-  cette échelle à 100 e⁻ en crête ([NL-Bayes](nl-bayes.md) §7.2).
+  cette échelle à 100 e⁻ en crête ([NL-Bayes](nl-bayes/parametres.md) §7.2).
 
 **σ est imposé, pas fourni.** `vst_denoise` refuse un argument `sigma`
 (erreur, et non simple avertissement : un σ dans les unités de l'image
@@ -1017,10 +1017,10 @@ Les méthodes dont l'extra ou le composant externe manque sont sautées
 | `low_light_vst.py` | effet de la stabilisation de variance à faible flux (tableaux du §5.5) |
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode ([optimisation](optimisation.md)) : journal, meilleurs paramètres, image, figures |
 | `benchmark.py` | benchmark principal ([benchmark](benchmark.md) §2-3) |
-| `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes ([NL-Bayes](nl-bayes.md) §11.1-11.2) |
-| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ ([NL-Bayes](nl-bayes.md) §11.3) |
-| `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres, orthophotos, RGB démosaïqué ([NL-Bayes](nl-bayes.md) §11.4-11.5) |
-| `nl_bayes_figures.py` | figures explicatives de [NL-Bayes](nl-bayes.md) |
+| `nl_bayes_benchmark.py` | moteurs et couleur de NL-Bayes ([NL-Bayes](nl-bayes/etudes.md) §11.1-11.2) |
+| `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ ([NL-Bayes](nl-bayes/etudes.md) §11.3) |
+| `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres, orthophotos, RGB démosaïqué ([NL-Bayes](nl-bayes/etudes.md) §11.4-11.5) |
+| `nl_bayes_figures.py` | figures explicatives de [NL-Bayes](nl-bayes/index.md) |
 
 ### 9.3 Performances indicatives
 
@@ -1185,7 +1185,7 @@ débruitage + recoloration, et `sigma_psd` pour BM3D.
   sur le benchmark couleur que les canaux filtrés ensemble, comme le
   tableau 1 de l'article (deux groupes 3D en tout) ; l'écart se voit en
   comparant à l'exécutable IPOL en mode couleur
-  ([NL-Bayes](nl-bayes.md) §8.1, §11.2).
+  ([NL-Bayes](nl-bayes/parametres.md) §8.1, §11.2).
 - **`sigma` refusé par `vst_denoise`** (erreur plutôt qu'avertissement) :
   dans le domaine stabilisé, le bruit vaut 1 par construction ; le
   réglage passe par `noise_factor` (σ dans le domaine stabilisé, défaut 1,

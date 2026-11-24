@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 NL-Bayes CFA contre la chaîne « démosaïçage puis NL-Bayes couleur »
-(docs/technique/nl-bayes.md §13.1).
+(docs/technique/nl-bayes/cfa.md §13.1).
 
 Même chaîne capteur que le volet ``rgb`` de ``nl_bayes_sensitivity.py`` :
 scène linéarisée (gamma 2,2), mosaïque RGGB, bruit de Poisson + lecture
@@ -30,7 +30,7 @@ Chaînes comparées :
 
 - ``ha+nlb (C)``      : Hamilton-Adams, NL-Bayes couleur en Y₀U₀V₀ (mode de
   l'article), σ = C = √κ_Y + 0,2, β₂ = 1,2 (recette d'eoqual-demosaicing) ;
-- ``ha+nlb (réglé)``  : idem, σ = 1,1, β₂ = 0,9 (docs/technique/nl-bayes.md §11.6) ;
+- ``ha+nlb (réglé)``  : idem, σ = 1,1, β₂ = 0,9 (docs/technique/nl-bayes/etudes.md §11.6) ;
 - ``cfa bil. n p.``   : nl_bayes_cfa sur la mosaïque stabilisée (σ = 1),
   pilote bilinéaire + NL-Bayes, n passes (1, 2, 4, 8, 12), réglages par défaut ;
 - ``cfa bil. β=0,7`` / ``β=1,4`` : sensibilité à β ;

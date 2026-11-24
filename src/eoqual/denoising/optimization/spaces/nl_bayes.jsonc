@@ -1,12 +1,12 @@
 {
   // Espace de recherche de « nl_bayes » — chargé par optimization/search_spaces.py.
-  // NL-Bayes natif (MIT). 3 dimensions, classées par les études de sensibilité (docs/technique/nl-bayes.md §11 et §12.1) :
+  // NL-Bayes natif (MIT). 3 dimensions, classées par les études de sensibilité (docs/technique/nl-bayes/etudes.md §11 et §12.1) :
   // budget 15-25 évaluations, n_initial_points ≈ 6-8. Point de départ = article (β₂ = 1,2).
   // Bornes des dimensions à échelle : multiples de σ ("scale": "sigma") ou de 1/σ ("inverse_sigma"). sigma_scale multiplie le σ transmis.
   "search_space": [
     // 1. Multiplie σ, donc β₁σ², β₂σ² et le seuil homogène γσ ensemble. Sans stabilisation : corrige un σ estimé biaisé.
     // Après stabilisation (σ = 1) : 1 sur une image brute ; après démosaïçage, C = √κ_Y + 0,2 (sigma_scale0), au meilleur
-    // à 0,04 dB près contre la vraie image (docs/technique/nl-bayes.md §11.8).
+    // à 0,04 dB près contre la vraie image (docs/technique/nl-bayes/etudes.md §11.8).
     {"name": "sigma_scale", "type": "float", "low": 0.5, "high": 2.5},
     // 2. Atténuation de l'étape 2 relativement à l'étape 1 (β₁ = 1 fixé) : β₂σ² est la variance de bruit supposée par le
     // filtre final. Redondant avec sigma_scale le long de β₂·σ² ≈ constant (crête) ; contre la vraie image, β₂ = 1,2 (article)
@@ -18,7 +18,7 @@
   ],
   // Point de départ (évalué en premier) : réglages de l'article à faible bruit.
   "initial_guess": {"sigma_scale": 1.0, "beta2": 1.2, "N2": 30},
-  // Fixés explicitement, pour qu'aucun palier de l'article ne bascule quand sigma_scale fait varier σ (docs/technique/nl-bayes.md §6.2).
+  // Fixés explicitement, pour qu'aucun palier de l'article ne bascule quand sigma_scale fait varier σ (docs/technique/nl-bayes/parametres.md §6.2).
   // Effets faibles ou redondants (§12.1). k₁, k₂ et N₁ suivent la règle de l'article (5 en gris, 3 en couleur à faible bruit).
   "fixed": {"beta1": 1.0, "gamma": 1.05, "tau0": 4.0, "window_factor": 7.0, "use_area1": true, "use_area2": false},
 }

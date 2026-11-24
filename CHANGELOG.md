@@ -6,7 +6,10 @@ Versions publiées et contenu de chacune.
 
 Non publié
 
-:   -   Documentation réorganisée : documents techniques dans
+:   -   Document NL-Bayes découpé en documents spécialisés dans
+        `docs/technique/nl-bayes/` (méthode, paramètres, études, réglage,
+        NL-Bayes CFA, limites) ; les chapitres gardent leur numéro.
+    -   Documentation réorganisée : documents techniques dans
         `docs/technique/`, publiés avec l'API et les notes de version
         par Sphinx et MyST (`docs/`). Les documents décrivent l'état
         présent ; ce qui change d'une version à l'autre est dans ce

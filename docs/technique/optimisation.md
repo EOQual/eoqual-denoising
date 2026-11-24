@@ -58,7 +58,7 @@ régler, et comment.
 |---|---|---|
 | (a, b), offset | propriétés du **capteur** | **fixes** : PTC ou recette en vol |
 | `sigma_scale` | ajustement du **niveau** de débruitage | **optimisé** ; c'est C après démosaïçage |
-| autres paramètres | réglages de la **méthode** | optimisés si besoin, gain souvent faible (§3, [benchmark](benchmark.md) §3) ; pour NL-Bayes, lesquels régler et pourquoi : [NL-Bayes](nl-bayes.md) §12 |
+| autres paramètres | réglages de la **méthode** | optimisés si besoin, gain souvent faible (§3, [benchmark](benchmark.md) §3) ; pour NL-Bayes, lesquels régler et pourquoi : [NL-Bayes](nl-bayes/reglage.md) §12 |
 
 `sigma_scale` multiplie σ dans le domaine où travaille NL-Bayes : le σ de
 l'image sans stabilisation, 1 avec stabilisation. Dans ce second cas,
@@ -81,11 +81,11 @@ estimé, une stabilisation imparfaite, ou le gain de bruit du démosaïçage.
 utilise σ multiplié par un de ses propres paramètres, multiplier σ par
 `sigma_scale` revient à changer ce paramètre : les deux ne doivent pas
 être optimisés ensemble sans précaution. C'est le cas de NL-Bayes (β·σ²,
-γσ) : analyse et recommandation dans [NL-Bayes](nl-bayes.md) §7.3 et
+γσ) : analyse et recommandation dans [NL-Bayes](nl-bayes/parametres.md) §7.3 et
 §12.
 
 **Budget.** 15 à 25 évaluations pour `sigma_scale` seul, autant pour
-les 3 dimensions de NL-Bayes ([NL-Bayes](nl-bayes.md) §12 ; contraintes et redondances : §12.4). `optimize_parameters` avertit quand des réglages redondants sont libres ensemble (NL-Bayes : `sigma_scale`, β₁, β₂, γ). Toujours valider le réglage sur une autre
+les 3 dimensions de NL-Bayes ([NL-Bayes](nl-bayes/reglage.md) §12 ; contraintes et redondances : §12.4). `optimize_parameters` avertit quand des réglages redondants sont libres ensemble (NL-Bayes : `sigma_scale`, β₁, β₂, γ). Toujours valider le réglage sur une autre
 image que celle qui a servi à l'optimiser (§6).
 
 ### 2.4 Image démosaïquée : optimiser C, pas (a, b)
@@ -139,7 +139,7 @@ En ligne de commande : `examples/optimize_parameters.py --method nl_bayes
 - **Optimiser (a, b) eux-mêmes** : à réserver à une mesure douteuse, en
   léger ajustement autour d'elle (l'outil ne le propose pas encore,
   §8) ; ce n'est jamais le bon levier pour le démosaïçage (§2.4).
-- **τ₀ proportionnel à σ²** (NL-Bayes) : testée et écartée ([NL-Bayes](nl-bayes.md) §11.3).
+- **τ₀ proportionnel à σ²** (NL-Bayes) : testée et écartée ([NL-Bayes](nl-bayes/etudes.md) §11.3).
 
 ## 3. Espaces de recherche et contraintes
 
@@ -158,7 +158,7 @@ Chaque méthode réglable a un espace par défaut (`SEARCH_SPACES`) :
 | `wavelet_dict` | `threshold` [0,3 ; 4]·σ, `level` 1-5 |
 | `bm3d` | `sigma_scale` [0,5 ; 2], profil (`np`, `refilter`, `vn`, `high`) |
 | `nl_ridge`, `nl_ridge_inria` | `sigma_scale`, `p1`, `p2`, `k1`, `k2`, contraintes (linéaire / affine) |
-| `nl_bayes` | `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90] ; β₁, γ, τ₀, α, `use_area1`, `use_area2` fixés ([NL-Bayes](nl-bayes.md) §12) |
+| `nl_bayes` | `sigma_scale` [0,5 ; 2,5], `beta2` [0,4 ; 1,5], `N2` [15 ; 90] ; β₁, γ, τ₀, α, `use_area1`, `use_area2` fixés ([NL-Bayes](nl-bayes/reglage.md) §12) |
 | `nl_bayes_ipol` | `sigma_scale`, `use_area1`, `use_area2` |
 | `restormer` | aucune (réseau aveugle) |
 

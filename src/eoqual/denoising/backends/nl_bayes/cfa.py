@@ -8,7 +8,7 @@ Le calcul est fait par la bibliothèque **nlbayes-ext** (MIT,
 https://github.com/oam31/nlbayes-ext, fonction ``denoise_cfa``) ; ce module
 adapte l'appel au contrat d'eoqual-denoising (σ estimé sur les quatre
 sous-plans du motif par :func:`~eoqual.denoising.utils.estimate_noise_sigma`
-s'il est absent). Méthode et études : docs/technique/nl-bayes.md §13.
+s'il est absent). Méthode et études : docs/technique/nl-bayes/cfa.md §13.
 """
 from __future__ import annotations
 

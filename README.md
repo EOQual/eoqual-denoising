@@ -9,7 +9,7 @@ de la Terre, avec stabilisation de variance pour le bruit
 poisson-gaussien des images brutes de capteur. Voir **[référence technique](docs/technique/reference.md)**
 pour le détail de chaque méthode (principe, implémentation, limites,
 performances indicatives) et pour le rôle du niveau de bruit σ,
-**[NL-Bayes](docs/technique/nl-bayes.md)** pour NL-Bayes en détail (mathématiques,
+**[NL-Bayes](docs/technique/nl-bayes/index.md)** pour NL-Bayes en détail (mathématiques,
 paramètres, études de sensibilité, réglage),
 **[optimisation](docs/technique/optimisation.md)** pour le réglage des paramètres
 (dont σ et le modèle de bruit) sur une image de référence,
@@ -176,7 +176,7 @@ Exemples prêts à l'emploi dans `examples/` :
 | `optimize_parameters.py` | optimiser les paramètres d'une méthode |
 | `tau0_study.py` | sensibilité de NL-Bayes au seuil τ₀ |
 | `nl_bayes_sensitivity.py` | sensibilité de NL-Bayes à tous ses paramètres (orthophotos, RGB démosaïqué) |
-| `nl_bayes_figures.py` | figures explicatives de [NL-Bayes](docs/technique/nl-bayes.md) |
+| `nl_bayes_figures.py` | figures explicatives de [NL-Bayes](docs/technique/nl-bayes/index.md) |
 | `nl_bayes_cfa_study.py` | `nl_bayes_cfa` (mosaïque → RGB) contre Hamilton-Adams puis NL-Bayes, contre la vraie image |
 | `benchmark.py`, `nl_bayes_benchmark.py` | reproduire [benchmark](docs/technique/benchmark.md) |
 
@@ -197,7 +197,7 @@ passer par `vst_denoise`).
 | `tv_bregman` | — | Variation totale (ROF), solveur split Bregman | BSD-3 (scikit-image) |
 | `wavelet` | — | Seuillage des coefficients d'ondelettes (BayesShrink/VisuShrink) | BSD-3 (scikit-image) |
 | `nl_bayes` | — | Estimateur bayésien gaussien non local sur groupes de patchs, deux étapes ; **couleur** (Y₀U₀V₀ de l'article, RGB, canal par canal) | MIT (réimplémentation depuis l'article IPOL) |
-| `nl_bayes_cfa` | — | **Mosaïque de Bayer → RGB** : débruite et démosaïque ensemble ; estimateur gaussien de Yu, Sapiro & Mallat (PLE) sur les groupes NL-Bayes ([NL-Bayes](docs/technique/nl-bayes.md) §13) | MIT (réimplémentation depuis les articles) |
+| `nl_bayes_cfa` | — | **Mosaïque de Bayer → RGB** : débruite et démosaïque ensemble ; estimateur gaussien de Yu, Sapiro & Mallat (PLE) sur les groupes NL-Bayes ([NL-Bayes](docs/technique/nl-bayes/cfa.md) §13) | MIT (réimplémentation depuis les articles) |
 | `nl_ridge` | — | Combinaisons linéaires de patchs similaires, poids en forme fermée (SURE puis ridge) | MIT (réimplémentation depuis les articles) |
 | `drunet` | `deep` | Réseau U-Net résiduel conditionné par σ, poids pré-entraînés | BSD-3 (deepinv) |
 | `swinir` | `deep` | Transformeur à fenêtres glissantes, poids par niveau de bruit (15/25/50) | Apache-2.0 (poids) / BSD-3 |

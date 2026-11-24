@@ -177,7 +177,7 @@ def build_constraint(space: dict) -> Callable[[list], bool] | None:
 
 #: Groupes de réglages redondants : le calcul ne dépend que de produits de
 #: ces réglages, une direction de l'espace est sans effet s'ils sont tous
-#: libres. NL-Bayes : β₁σ², β₂σ², γσ (docs/technique/nl-bayes.md §7.3) ; sans critère des
+#: libres. NL-Bayes : β₁σ², β₂σ², γσ (docs/technique/nl-bayes/parametres.md §7.3) ; sans critère des
 #: zones homogènes, γ ne compte plus et β₁σ², β₂σ² suffisent.
 _REDUNDANT = {
     "nl_bayes": (("sigma_scale", "beta1", "beta2", "gamma"), ("sigma_scale", "beta1", "beta2")),
@@ -208,7 +208,7 @@ def redundancy_warnings(space: dict, method: str) -> list[str]:
             out.append(
                 f"{method} : {', '.join(group)} sont optimisés ensemble alors que le calcul ne dépend que de "
                 "leurs produits (β·σ², γ·σ) : une direction de l'espace est sans effet. Fixer l'un d'eux "
-                "(β₁ ou γ, docs/technique/nl-bayes.md §7.3)."
+                "(β₁ ou γ, docs/technique/nl-bayes/parametres.md §7.3)."
             )
             break
     return out

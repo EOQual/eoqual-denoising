@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Étude de sensibilité des paramètres de NL-Bayes sur des images de
-télédétection texturées (docs/technique/nl-bayes.md §9).
+télédétection texturées (docs/technique/nl-bayes/parametres.md §9).
 
 Deux volets :
 

@@ -9,7 +9,7 @@ seul article IPOL ; ce module ne fait qu'adapter l'appel au contrat
 d'eoqual-denoising (``f(image, sigma=None, ...)``, σ estimé par
 :func:`~eoqual.denoising.utils.estimate_noise_sigma` s'il est absent).
 
-Méthode, paramètres et études : docs/technique/nl-bayes.md.
+Méthode, paramètres et études : docs/technique/nl-bayes/index.md.
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def nl_bayes_denoise(
         Renvoyer l'estimée de l'étape 1.
     color_mode : {"yuv", "rgb", "channel"}
         Traitement d'une image couleur (ignoré en niveaux de gris) : voir
-        docs/technique/nl-bayes.md §8.
+        docs/technique/nl-bayes/parametres.md §8.
     engine : {"vectorized", "loop"}
         Moteur par lots (défaut) ou fidèle à l'article (« paste trick »,
         niveaux de gris ou ``color_mode="channel"``).

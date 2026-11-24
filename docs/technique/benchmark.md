@@ -150,7 +150,7 @@ avec les réglages optimisés sur la moitié de réglage.
 lignes : 25 évaluations. La ligne `nl_bayes` a été mesurée avec l'espace
 de l'époque (10 dimensions, dont β₁, β₂, γ) ; l'espace par défaut n'en
 garde plus que 7, β₁, β₂ et γ étant redondants avec `sigma_scale`
-([NL-Bayes](nl-bayes.md) §7.3).
+([NL-Bayes](nl-bayes/parametres.md) §7.3).
 
 ### 3.1 Lecture
 
@@ -204,7 +204,7 @@ directement est une erreur : la stabilisation de variance gagne 4 à
 | Qualité maximale, bruit modéré (σ ≤ 0,2) | `restormer` | Légèrement devant, mais aveugle : hors de son domaine il échoue |
 | Image brute de capteur, faible flux | `vst_denoise(..., "drunet")` | +8 à +10 dB sur l'application directe |
 | Sans PyTorch | `nl_bayes` | Meilleure méthode classique par défaut (PSNR et SSIM), MIT, aucune dépendance |
-| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +1,3 à +1,9 dB sur le canal par canal, 2,6 fois plus rapide ([NL-Bayes](nl-bayes.md) §11.2) |
+| Sans PyTorch, image couleur | `nl_bayes`, `color_mode="yuv"` | +1,3 à +1,9 dB sur le canal par canal, 2,6 fois plus rapide ([NL-Bayes](nl-bayes/etudes.md) §11.2) |
 | Sans PyTorch, référence disponible | `nl_ridge` optimisé | 32,50 dB une fois réglé (§3) |
 | Sans PyTorch, temps compté | `nl_means` | 7 fois plus rapide que `nl_bayes`, 1,6 dB de moins |
 | Traitement massif, temps réel | `tv_chambolle` | ~10 fois plus rapide que `nl_means`, 1 dB de moins |
@@ -244,6 +244,6 @@ liste les autres avec la raison de leur absence.
 
 ## 8. NL-Bayes : moteurs et couleur
 
-Résultats et lecture : [NL-Bayes](nl-bayes.md) §11.1 (moteurs) et
+Résultats et lecture : [NL-Bayes](nl-bayes/etudes.md) §11.1 (moteurs) et
 §11.2 (couleur). Reproduire : `python examples/nl_bayes_benchmark.py --out
 nl_bayes.md`.

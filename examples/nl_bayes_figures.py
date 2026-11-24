@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figures explicatives de docs/technique/nl-bayes.md (principe de la méthode).
+Figures explicatives de docs/technique/nl-bayes/index.md (principe de la méthode).
 
     python examples/nl_bayes_figures.py            # écrit docs/technique/figures/nl_bayes/*.png
 
 Image : « astronaut » (NASA, domaine public), niveaux de gris, bruit blanc
 σ = 20 sur l'échelle 0-255. Le regroupement et la covariance sont recalculés
-ici pour un seul patch, avec les formules de docs/technique/nl-bayes.md §2 à §4, afin de les
+ici pour un seul patch, avec les formules de docs/technique/nl-bayes/methode.md §2 à §4, afin de les
 montrer ; le débruitage complet utilise ``eoqual.denoising``.
 
 Dépendances de l'exemple (non requises par le paquet) : matplotlib.
